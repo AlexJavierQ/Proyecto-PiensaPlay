@@ -1,0 +1,5 @@
+package com.example.piensa_play
+
+import io.flutter.embedding.android.FlutterActivity
+
+class MainActivity : FlutterActivity()
