@@ -28,19 +28,23 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
     setState(() {
       _showResult = true;
       // Check if all selected words are correct and all correct words are selected
-      _isCorrect = _selectedWords.length == correctWords.length &&
+      _isCorrect =
+          _selectedWords.length == correctWords.length &&
           _selectedWords.every((word) => correctWords.contains(word));
     });
   }
 
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
+    final args =
+        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
     final unitData = args['unitData'] as Map<String, dynamic>;
     final gameData = args['gameData'] as Map<String, dynamic>;
 
-    final correctWords = (gameData['correctWords'] as List?)?.cast<String>() ?? [];
-    final incorrectWords = (gameData['incorrectWords'] as List?)?.cast<String>() ?? [];
+    final correctWords =
+        (gameData['correctWords'] as List?)?.cast<String>() ?? [];
+    final incorrectWords =
+        (gameData['incorrectWords'] as List?)?.cast<String>() ?? [];
     final allWords = [...correctWords, ...incorrectWords]..shuffle();
 
     return Scaffold(
@@ -113,7 +117,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                             return Container(
                               color: const Color(0xFF90C958),
                               child: const Center(
-                                child: Icon(Icons.forest, size: 80, color: Colors.white),
+                                child: Icon(
+                                  Icons.forest,
+                                  size: 80,
+                                  color: Colors.white,
+                                ),
                               ),
                             );
                           },
@@ -121,7 +129,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                       : Container(
                           color: const Color(0xFF90C958),
                           child: const Center(
-                            child: Icon(Icons.forest, size: 80, color: Colors.white),
+                            child: Icon(
+                              Icons.forest,
+                              size: 80,
+                              color: Colors.white,
+                            ),
                           ),
                         ),
                 ),
@@ -177,7 +189,7 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                 children: allWords.map((word) {
                   final isSelected = _selectedWords.contains(word);
                   final isCorrectWord = correctWords.contains(word);
-                  
+
                   Color chipColor;
                   if (_showResult) {
                     if (isCorrectWord) {
@@ -346,9 +358,36 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
                         child: ElevatedButton(
                           onPressed: () {
                             if (_isCorrect) {
-                              // Save progress and go back
-                              // Note: You'll need to pass userId from args
-                              Navigator.pop(context);
+                              // Navegar a pantalla de finalización
+                              final correctCount = correctWords.length;
+                              final incorrectCount =
+                                  _selectedWords.length - correctCount;
+                              final totalQuestions =
+                                  correctWords.length +
+                                  ((gameData['incorrectWords'] as List?)
+                                          ?.length ??
+                                      0);
+                              final finalScore = totalQuestions > 0
+                                  ? (correctCount / totalQuestions * 100)
+                                  : 0.0;
+
+                              Navigator.pushReplacementNamed(
+                                context,
+                                '/activity_completion',
+                                arguments: {
+                                  'unitData': unitData,
+                                  'activityData': gameData,
+                                  'correctAnswers': correctCount,
+                                  'incorrectAnswers': incorrectCount,
+                                  'learningPoints': [
+                                    'Siempre verifica la fuente de la información',
+                                    'Desconfía de mensajes con lenguaje muy emocional',
+                                    'Las promesas mágicas suelen ser falsas',
+                                  ],
+                                  'unitId': args['unitId'],
+                                  'activityId': gameData['id'],
+                                },
+                              );
                             } else {
                               Navigator.pop(context);
                             }

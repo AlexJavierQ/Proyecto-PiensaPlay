@@ -1,8 +1,34 @@
 import 'package:flutter/material.dart';
-import '../utils/app_styles.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/firebase_service.dart';
+import '../utils/local_storage_service.dart';
+import '../widgets/custom_bottom_nav.dart';
+import '../widgets/piensa_app_bar.dart';
 
-class GameActivitiesMapScreen extends StatelessWidget {
+class GameActivitiesMapScreen extends StatefulWidget {
   const GameActivitiesMapScreen({super.key});
+
+  @override
+  State<GameActivitiesMapScreen> createState() => _GameActivitiesMapScreenState();
+}
+
+class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen> {
+  String? _userId;
+
+  @override
+  void initState() {
+    super.initState();
+    _loadUserId();
+  }
+
+  Future<void> _loadUserId() async {
+    final userData = await LocalStorageService.getUserData();
+    if (mounted) {
+      setState(() {
+        _userId = userData?['userId'];
+      });
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -10,382 +36,274 @@ class GameActivitiesMapScreen extends StatelessWidget {
     final unitData = args['unitData'] as Map<String, dynamic>;
     final unitId = args['unitId'] as String?;
     
-    final games = (unitData['games'] as List?)?.cast<Map<String, dynamic>>() ?? [];
-    
-    // Sort games by order
-    games.sort((a, b) => (a['order'] ?? 0).compareTo(b['order'] ?? 0));
+    if (unitId == null || _userId == null) {
+      return const Scaffold(body: Center(child: CircularProgressIndicator()));
+    }
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: AppStyles.primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          unitData['title'] ?? 'Actividades',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
-        child: Column(
-          crossAxisAlignment: CrossAxisAlignment.start,
-          children: [
-            // Decorative map image
-            Container(
-              height: 250,
-              width: double.infinity,
-              margin: const EdgeInsets.all(16),
-              decoration: BoxDecoration(
-                color: const Color(0xFFE8F5E9),
-                borderRadius: BorderRadius.circular(20),
-                border: Border.all(color: Colors.black, width: 2),
-                boxShadow: [
-                  BoxShadow(
-                    color: Colors.black.withValues(alpha: 0.1),
-                    blurRadius: 10,
-                    offset: const Offset(0, 4),
-                  ),
-                ],
-              ),
-              child: Stack(
-                children: [
-                  // Decorative map elements
-                  Positioned(
-                    top: 40,
-                    left: 30,
-                    child: _MapMarker(
-                      color: games.isNotEmpty && !(games[0]['locked'] ?? false)
-                          ? const Color(0xFFFF6B6B)
-                          : Colors.grey,
-                      icon: Icons.location_on,
-                      size: 50,
+      backgroundColor: const Color(0xFFF0F9F0),
+      appBar: PiensaAppBar(title: unitData['title'] ?? 'Mapa de Actividades'),
+      body: SafeArea(
+        child: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseService.getUnitActivities(unitId),
+          builder: (context, activitySnapshot) {
+            return StreamBuilder<QuerySnapshot>(
+              stream: FirebaseService.getUserProgress(_userId!),
+              builder: (context, progressSnapshot) {
+                if (activitySnapshot.connectionState == ConnectionState.waiting) {
+                  return const Center(child: CircularProgressIndicator());
+                }
+
+                final List<QueryDocumentSnapshot> activityDocs = activitySnapshot.data?.docs ?? [];
+                
+                if (activityDocs.isEmpty) {
+                  return const Center(
+                    child: Text(
+                      'No hay actividades creadas para esta unidad.\nEl profesor debe agregarlas desde el panel.',
+                      textAlign: TextAlign.center,
+                      style: TextStyle(fontWeight: FontWeight.bold, color: Colors.grey),
                     ),
-                  ),
-                  if (games.length > 1)
-                    Positioned(
-                      top: 120,
-                      right: 50,
-                      child: _MapMarker(
-                        color: games.length > 1 && !(games[1]['locked'] ?? false)
-                            ? const Color(0xFF4ECDC4)
-                            : Colors.grey,
-                        icon: Icons.location_on,
-                        size: 50,
+                  );
+                }
+
+                final List<QueryDocumentSnapshot> progressDocs = progressSnapshot.data?.docs ?? [];
+                
+                final completedIds = progressDocs
+                    .where((doc) => (doc.data() as Map<String, dynamic>)['completed'] == true)
+                    .map((doc) => (doc.data() as Map<String, dynamic>)['activityId'])
+                    .toSet();
+
+                List<Map<String, dynamic>> activities = [];
+                for (int i = 0; i < activityDocs.length; i++) {
+                  final data = activityDocs[i].data() as Map<String, dynamic>;
+                  final id = activityDocs[i].id;
+                  bool isCompleted = completedIds.contains(id);
+                  bool isLocked = i == 0 ? false : !completedIds.contains(activityDocs[i-1].id);
+                  
+                  activities.add({
+                    ...data,
+                    'id': id,
+                    'isCompleted': isCompleted,
+                    'status': isLocked ? 'locked' : 'available',
+                  });
+                }
+
+                return Column(
+                  children: [
+                    Expanded(
+                      child: SingleChildScrollView(
+                        physics: const BouncingScrollPhysics(),
+                        child: Column(
+                          crossAxisAlignment: CrossAxisAlignment.start,
+                          children: [
+                            const SizedBox(height: 10),
+                            _buildMapHeader(context, unitId, unitData, activities),
+                            const SizedBox(height: 24),
+                            _buildSectionTitle(),
+                            const SizedBox(height: 16),
+                            Padding(
+                              padding: const EdgeInsets.symmetric(horizontal: 20),
+                              child: Column(
+                                children: activities.map((act) => _buildActivityCard(context, act, unitId, unitData)).toList(),
+                              ),
+                            ),
+                            const SizedBox(height: 20),
+                          ],
+                        ),
                       ),
                     ),
-                  if (games.length > 2)
-                    Positioned(
-                      bottom: 40,
-                      left: 60,
-                      child: _MapMarker(
-                        color: games.length > 2 && !(games[2]['locked'] ?? false)
-                            ? const Color(0xFFFFD93D)
-                            : Colors.grey,
-                        icon: Icons.location_on,
-                        size: 50,
-                      ),
-                    ),
-                  // Character/mascot
-                  Positioned(
-                    bottom: 10,
-                    right: 10,
-                    child: Container(
-                      width: 80,
-                      height: 80,
-                      decoration: BoxDecoration(
-                        color: const Color(0xFFFFB84D),
-                        shape: BoxShape.circle,
-                        border: Border.all(color: Colors.white, width: 3),
-                      ),
-                      child: const Icon(
-                        Icons.pets,
-                        size: 40,
-                        color: Colors.white,
-                      ),
-                    ),
-                  ),
-                ],
-              ),
-            ),
-
-            // Activities section
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 16),
-              child: Row(
-                children: [
-                  const Text(
-                    'ACTIVIDADES DISPONIBLES',
-                    style: TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w800,
-                      color: AppStyles.textDark,
-                      letterSpacing: 0.5,
-                    ),
-                  ),
-                  const Spacer(),
-                  Container(
-                    padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
-                    decoration: BoxDecoration(
-                      color: const Color(0xFFFFD700),
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    child: const Icon(
-                      Icons.bolt,
-                      size: 20,
-                      color: Colors.white,
-                    ),
-                  ),
-                ],
-              ),
-            ),
-            const SizedBox(height: 16),
-
-            // Activities list
-            ...games.asMap().entries.map((entry) {
-              final index = entry.key;
-              final game = entry.value;
-              final isLocked = game['locked'] ?? false;
-              final requiredActivities = game['requiredActivities'] ?? 0;
-
-              return _ActivityCard(
-                title: game['title'] ?? 'Sin título',
-                subtitle: game['subtitle'] ?? '',
-                icon: _getIconForType(game['type'] ?? 'word_selection'),
-                color: _getColorForIndex(index),
-                isLocked: isLocked,
-                requiredActivities: requiredActivities,
-                onTap: isLocked
-                    ? null
-                    : () {
-                        Navigator.pushNamed(
-                          context,
-                          '/game_play',
-                          arguments: {
-                            'unitId': unitId,
-                            'unitData': unitData,
-                            'gameData': game,
-                          },
-                        );
-                      },
-              );
-            }),
-
-            const SizedBox(height: 100), // Space for bottom nav
-          ],
+                  ],
+                );
+              }
+            );
+          }
         ),
       ),
-      bottomNavigationBar: Container(
-        decoration: BoxDecoration(
-          color: AppStyles.primaryBlue,
-          borderRadius: const BorderRadius.only(
-            topLeft: Radius.circular(30),
-            topRight: Radius.circular(30),
-          ),
-        ),
-        child: BottomNavigationBar(
-          backgroundColor: Colors.transparent,
-          elevation: 0,
-          selectedItemColor: Colors.white,
-          unselectedItemColor: Colors.white70,
-          currentIndex: 0,
-          items: const [
-            BottomNavigationBarItem(
-              icon: Icon(Icons.home),
-              label: 'Inicio',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.book),
-              label: 'Glosario',
-            ),
-            BottomNavigationBarItem(
-              icon: Icon(Icons.settings),
-              label: 'Ajustes',
-            ),
-          ],
-        ),
-      ),
+      bottomNavigationBar: const CustomBottomNav(currentIndex: 0),
     );
   }
 
-  IconData _getIconForType(String type) {
-    switch (type) {
-      case 'detective':
-        return Icons.search;
-      case 'mission':
-        return Icons.flag;
-      default:
-        return Icons.text_fields;
-    }
+  void _onPlayActivity(BuildContext context, String? unitId, Map<String, dynamic> unitData, Map<String, dynamic> activity) {
+    String route = '/game_play';
+    final type = activity['type'];
+    if (type == 'fake_news_detector') route = '/fake_news_detector';
+    else if (type == 'stereotype_breaker') route = '/stereotype_breaker';
+    else if (type == 'final_exam') route = '/final_exam';
+
+    Navigator.pushNamed(context, route, arguments: {
+      'unitId': unitId,
+      'unitData': unitData,
+      'activityData': activity,
+    });
   }
 
-  Color _getColorForIndex(int index) {
-    final colors = [
-      const Color(0xFFFF6B6B),
-      const Color(0xFF4ECDC4),
-      const Color(0xFFFFD93D),
-      const Color(0xFF95E1D3),
-      const Color(0xFFF38181),
-    ];
-    return colors[index % colors.length];
-  }
-}
-
-class _MapMarker extends StatelessWidget {
-  final Color color;
-  final IconData icon;
-  final double size;
-
-  const _MapMarker({
-    required this.color,
-    required this.icon,
-    this.size = 40,
-  });
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildMapHeader(BuildContext context, String? unitId, Map<String, dynamic> unitData, List<Map<String, dynamic>> activities) {
     return Container(
-      width: size,
-      height: size,
-      decoration: BoxDecoration(
-        color: color,
-        shape: BoxShape.circle,
-        border: Border.all(color: Colors.white, width: 3),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.2),
-            blurRadius: 4,
-            offset: const Offset(0, 2),
-          ),
-        ],
-      ),
-      child: Icon(
-        icon,
-        color: Colors.white,
-        size: size * 0.6,
-      ),
-    );
-  }
-}
-
-class _ActivityCard extends StatelessWidget {
-  final String title;
-  final String subtitle;
-  final IconData icon;
-  final Color color;
-  final bool isLocked;
-  final int requiredActivities;
-  final VoidCallback? onTap;
-
-  const _ActivityCard({
-    required this.title,
-    required this.subtitle,
-    required this.icon,
-    required this.color,
-    required this.isLocked,
-    required this.requiredActivities,
-    this.onTap,
-  });
-
-  @override
-  Widget build(BuildContext context) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-      decoration: BoxDecoration(
-        color: Colors.white,
-        borderRadius: BorderRadius.circular(16),
-        border: Border.all(color: Colors.black, width: 2),
-        boxShadow: [
-          BoxShadow(
-            color: Colors.black.withValues(alpha: 0.1),
-            blurRadius: 8,
-            offset: const Offset(0, 4),
-          ),
-        ],
-      ),
-      child: Material(
-        color: Colors.transparent,
-        child: InkWell(
-          onTap: onTap,
-          borderRadius: BorderRadius.circular(14),
-          child: Padding(
-            padding: const EdgeInsets.all(16),
-            child: Row(
+      margin: const EdgeInsets.symmetric(horizontal: 20),
+      height: 350,
+      child: Stack(
+        clipBehavior: Clip.none,
+        children: [
+          Container(
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(25),
+              border: Border.all(color: Colors.black, width: 2),
+              image: const DecorationImage(image: AssetImage('assets/background_map.png'), fit: BoxFit.cover, opacity: 0.8),
+              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))],
+            ),
+            child: Stack(
               children: [
-                // Icon
-                Container(
-                  width: 60,
-                  height: 60,
-                  decoration: BoxDecoration(
-                    color: isLocked ? Colors.grey[300] : color,
-                    shape: BoxShape.circle,
-                    border: Border.all(
-                      color: isLocked ? Colors.grey : Colors.black,
-                      width: 2,
-                    ),
+                if (activities.isNotEmpty)
+                  _buildMapPoint(
+                    top: 40, left: 60, 
+                    color: Color(activities[0]['color'] ?? 0xFFF9879B), 
+                    number: '1', 
+                    icon: activities[0]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[0]['icon']),
+                    onTap: activities[0]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[0]),
                   ),
-                  child: Icon(
-                    isLocked ? Icons.lock : icon,
-                    color: isLocked ? Colors.grey[600] : Colors.white,
-                    size: 30,
+                if (activities.length > 1)
+                  _buildMapPoint(
+                    top: 130, right: 80, 
+                    color: Color(activities[1]['color'] ?? 0xFF87CEEB), 
+                    number: '2', 
+                    icon: activities[1]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[1]['icon']),
+                    onTap: activities[1]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[1]),
                   ),
-                ),
-                const SizedBox(width: 16),
-                // Text content
-                Expanded(
-                  child: Column(
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Text(
-                        title,
-                        style: TextStyle(
-                          fontSize: 16,
-                          fontWeight: FontWeight.w700,
-                          color: isLocked ? Colors.grey : AppStyles.primaryBlue,
-                        ),
-                      ),
-                      const SizedBox(height: 4),
-                      Text(
-                        isLocked
-                            ? 'Completa $requiredActivities actividad${requiredActivities != 1 ? 'es' : ''} para avanzar'
-                            : subtitle,
-                        style: TextStyle(
-                          fontSize: 13,
-                          color: isLocked ? Colors.grey[600] : AppStyles.textLight,
-                        ),
-                      ),
-                    ],
+                if (activities.length > 2)
+                  _buildMapPoint(
+                    top: 220, left: 50, 
+                    color: Color(activities[2]['color'] ?? 0xFFBDBDBD), 
+                    number: '3', 
+                    icon: activities[2]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[2]['icon']),
+                    onTap: activities[2]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[2]),
                   ),
-                ),
-                const SizedBox(width: 12),
-                // Action button
-                Container(
-                  padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
-                  decoration: BoxDecoration(
-                    color: isLocked ? Colors.grey[400] : const Color(0xFFFFD700),
-                    borderRadius: BorderRadius.circular(20),
+                if (activities.length > 3)
+                  _buildMapPoint(
+                    bottom: 40, right: 60, 
+                    color: Color(activities[3]['color'] ?? 0xFFBDBDBD), 
+                    number: '4', 
+                    icon: activities[3]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[3]['icon']),
+                    onTap: activities[3]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[3]),
                   ),
-                  child: Text(
-                    isLocked ? 'Bloqueado' : 'Jugar',
-                    style: const TextStyle(
-                      fontSize: 14,
-                      fontWeight: FontWeight.w700,
-                      color: Colors.white,
-                    ),
-                  ),
-                ),
               ],
             ),
           ),
+          Positioned(top: -20, right: -10, child: Image.asset('assets/image-removebg-preview 1.png', width: 100, height: 100, fit: BoxFit.contain)),
+        ],
+      ),
+    );
+  }
+
+  IconData _getIconData(dynamic iconName) {
+    if (iconName is IconData) return iconName;
+    switch (iconName.toString()) {
+      case 'book': return Icons.book_rounded;
+      case 'extension': return Icons.extension_rounded;
+      case 'lock': return Icons.lock_rounded;
+      default: return Icons.videogame_asset_rounded;
+    }
+  }
+
+  Widget _buildMapPoint({double? top, double? left, double? right, double? bottom, required Color color, required String number, required IconData icon, VoidCallback? onTap}) {
+    return Positioned(
+      top: top, left: left, right: right, bottom: bottom,
+      child: GestureDetector(
+        onTap: onTap,
+        child: Stack(
+          clipBehavior: Clip.none,
+          children: [
+            Container(
+              width: 50, height: 50,
+              decoration: BoxDecoration(color: color.withOpacity(0.8), shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 2)),
+              child: Center(child: Icon(icon, color: Colors.white, size: 24)),
+            ),
+            Positioned(
+              top: -5, right: -5,
+              child: Container(
+                padding: const EdgeInsets.all(4),
+                decoration: BoxDecoration(color: const Color(0xFFF6E16B), shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 1)),
+                child: Text(number, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
+              ),
+            )
+          ],
         ),
       ),
     );
+  }
+
+  Widget _buildSectionTitle() {
+    return Padding(
+      padding: const EdgeInsets.symmetric(horizontal: 20),
+      child: Row(
+        mainAxisAlignment: MainAxisAlignment.spaceBetween,
+        children: [
+          const Text('ACTIVIDADES DISPONIBLES', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: Color(0xFF333333))),
+          Container(padding: const EdgeInsets.all(8), decoration: const BoxDecoration(color: Color(0xFFF6E16B), shape: BoxShape.circle), child: const Icon(Icons.bolt_rounded, color: Colors.black, size: 24)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActivityCard(BuildContext context, Map<String, dynamic> act, String? unitId, Map<String, dynamic> unitData) {
+    final bool isLocked = act['status'] == 'locked';
+    final bool isCompleted = act['isCompleted'] == true;
+    final colorVal = act['color'] is int ? act['color'] : 0xFFF6E16B;
+    
+    return Container(
+      margin: const EdgeInsets.only(bottom: 16),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(20),
+        border: Border.all(color: Colors.black, width: 2),
+        boxShadow: const [BoxShadow(color: Colors.black, offset: Offset(0, 4))],
+      ),
+      child: Padding(
+        padding: const EdgeInsets.all(16),
+        child: Row(
+          children: [
+            Container(
+              width: 60, height: 60,
+              decoration: BoxDecoration(
+                color: isCompleted ? const Color(0xFFA0E69D) : Color(colorVal),
+                shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 2),
+              ),
+              child: Icon(isCompleted ? Icons.check_rounded : _getIconData(act['icon']), color: isLocked ? Colors.white60 : Colors.white, size: 30),
+            ),
+            const SizedBox(width: 16),
+            Expanded(
+              child: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                children: [
+                  Text(act['title'] ?? 'Actividad', style: TextStyle(fontSize: 18, fontWeight: FontWeight.w900, color: isLocked ? Colors.grey : Colors.black)),
+                  const SizedBox(height: 4),
+                  Text(isLocked ? '¡Completa la anterior para jugar!' : (isCompleted ? '¡Completada!' : act['subtitle'] ?? ''), 
+                  style: TextStyle(fontSize: 13, color: isLocked ? Colors.grey : Colors.black54, fontWeight: FontWeight.w600)),
+                ],
+              ),
+            ),
+            GestureDetector(
+              onTap: isLocked ? null : () => _onPlayActivity(context, unitId, unitData, act),
+              child: Container(
+                padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
+                decoration: BoxDecoration(
+                  color: isLocked ? Colors.grey[400] : (isCompleted ? const Color(0xFFA0E69D) : const Color(0xFFF6E16B)),
+                  borderRadius: BorderRadius.circular(12),
+                  border: Border.all(color: Colors.black, width: 1.5),
+                ),
+                child: Text(
+                  isLocked ? 'Bloqueado' : (isCompleted ? 'Repetir' : 'Jugar'),
+                  style: const TextStyle(fontWeight: FontWeight.w900, fontSize: 13),
+                ),
+              ),
+            ),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildBottomNav(BuildContext context) {
+    return const CustomBottomNav(currentIndex: 0);
   }
 }

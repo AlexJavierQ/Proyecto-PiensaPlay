@@ -1,5 +1,7 @@
 import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
+import '../utils/local_storage_service.dart';
+import '../widgets/custom_bottom_nav.dart';
 
 class SettingsScreen extends StatefulWidget {
   final String userId;
@@ -18,10 +20,6 @@ class SettingsScreen extends StatefulWidget {
 }
 
 class _SettingsScreenState extends State<SettingsScreen> {
-  bool _notifications = true;
-  bool _soundEffects = true;
-  bool _backgroundMusic = false;
-
   final List<String> _avatarImages = [
     'assets/Vector.png',
     'assets/Vector (2).png',
@@ -31,350 +29,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   @override
   Widget build(BuildContext context) {
-    // Extract arguments from route if provided
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     final displayAvatarIndex = args?['avatarIndex'] ?? widget.avatarIndex;
+    final displayUserName = args?['userName'] ?? widget.userName;
 
     return Scaffold(
-      backgroundColor: const Color(0xFFF8FAFC),
+      backgroundColor: const Color(0xFFF0F7FF),
       appBar: AppBar(
-        backgroundColor: AppStyles.primaryBlue,
+        backgroundColor: const Color(0xFF132757),
         elevation: 0,
-        title: const Text('Ajustes'),
+        title: const Text('Mi Perfil', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
       ),
-      body: ListView(
-        padding: const EdgeInsets.all(16),
+      body: Column(
         children: [
-          // Profile Card
-          Container(
-            padding: const EdgeInsets.all(24),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(20),
-              border: Border.all(color: const Color(0xFFD7EDB2), width: 3),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.06),
-                  blurRadius: 12,
-                  offset: const Offset(0, 6),
-                ),
-              ],
-            ),
-            child: Column(
+          Expanded(
+            child: ListView(
+              padding: const EdgeInsets.all(24),
+              physics: const BouncingScrollPhysics(),
               children: [
-                // Avatar with green ring
-                Container(
-                  width: 100,
-                  height: 100,
-                  padding: const EdgeInsets.all(8),
-                  decoration: BoxDecoration(
-                    color: const Color(0xFFC9E090),
-                    shape: BoxShape.circle,
-                  ),
-                  child: Container(
-                    decoration: const BoxDecoration(
-                      color: Colors.white,
-                      shape: BoxShape.circle,
-                    ),
-                    child: ClipOval(
-                      child: Image.asset(
-                        _avatarImages[displayAvatarIndex],
-                        fit: BoxFit.cover,
-                      ),
-                    ),
-                  ),
-                ),
-                const SizedBox(height: 16),
-                const Text(
-                  'Jugador',
-                  style: TextStyle(
-                    fontSize: 22,
-                    fontWeight: FontWeight.w700,
-                    color: AppStyles.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                // Edit button
-                ElevatedButton.icon(
-                  onPressed: () {
-                    // TODO: Navigate to edit profile
-                  },
-                  icon: const Icon(Icons.edit, size: 18),
-                  label: const Text('Editar Perfil'),
-                  style: ElevatedButton.styleFrom(
-                    backgroundColor: const Color(0xFFF6E16B),
-                    foregroundColor: AppStyles.primaryBlue,
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(20),
-                    ),
-                    padding: const EdgeInsets.symmetric(horizontal: 24, vertical: 12),
-                  ),
-                ),
+                _buildProfileCard(displayUserName, displayAvatarIndex),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Ajustes de Juego'),
+                _buildSettingsTile(Icons.notifications_active_rounded, 'Notificaciones', true),
+                _buildSettingsTile(Icons.volume_up_rounded, 'Sonidos', true),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Cuenta'),
+                _buildActionTile(Icons.logout_rounded, 'Cerrar Sesión', Colors.redAccent, () => _handleLogout(context)),
               ],
             ),
           ),
-          const SizedBox(height: 20),
-
-          // Preferencias Section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'Preferencias',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppStyles.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildToggleRow('Notificaciones', _notifications, (val) {
-                  setState(() => _notifications = val);
-                }),
-                const Divider(height: 24),
-                _buildToggleRow('Efectos de sonido', _soundEffects, (val) {
-                  setState(() => _soundEffects = val);
-                }),
-                const Divider(height: 24),
-                _buildToggleRow('Música de fondo', _backgroundMusic, (val) {
-                  setState(() => _backgroundMusic = val);
-                }),
-              ],
-            ),
-          ),
-          const SizedBox(height: 20),
-
-          // General Section
-          Container(
-            padding: const EdgeInsets.all(20),
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(16),
-              boxShadow: [
-                BoxShadow(
-                  color: Colors.black.withValues(alpha: 0.05),
-                  blurRadius: 10,
-                  offset: const Offset(0, 4),
-                ),
-              ],
-            ),
-            child: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                const Text(
-                  'General',
-                  style: TextStyle(
-                    fontSize: 20,
-                    fontWeight: FontWeight.w700,
-                    color: AppStyles.primaryBlue,
-                  ),
-                ),
-                const SizedBox(height: 16),
-                _buildTextRow('Política de privacidad', null),
-                const Divider(height: 24),
-                _buildTextRow('Términos de servicio', null),
-                const Divider(height: 24),
-                _buildTextRow('Idioma', 'Español'),
-                const Divider(height: 24),
-                _buildTextRow('Versión de la App', '1.0.0'),
-                const Divider(height: 24),
-                InkWell(
-                  onTap: () {
-                    // TODO: Implement logout
-                    showDialog(
-                      context: context,
-                      builder: (ctx) => AlertDialog(
-                        title: const Text('Cerrar Sesión'),
-                        content: const Text('¿Estás seguro que deseas cerrar sesión?'),
-                        actions: [
-                          TextButton(
-                            onPressed: () => Navigator.pop(ctx),
-                            child: const Text('Cancelar'),
-                          ),
-                          TextButton(
-                            onPressed: () {
-                              Navigator.pop(ctx);
-                              Navigator.popUntil(context, (route) => route.isFirst);
-                            },
-                            child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
-                          ),
-                        ],
-                      ),
-                    );
-                  },
-                  child: Padding(
-                    padding: const EdgeInsets.symmetric(vertical: 4),
-                    child: Row(
-                      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-                      children: const [
-                        Text(
-                          'Cerrar Sesión',
-                          style: TextStyle(
-                            fontSize: 16,
-                            color: AppStyles.primaryBlue,
-                          ),
-                        ),
-                      ],
-                    ),
-                  ),
-                ),
-              ],
-            ),
-          ),
-          const SizedBox(height: 80),
         ],
       ),
-      bottomNavigationBar: _BottomNavBar(current: 2),
+      bottomNavigationBar: const CustomBottomNav(currentIndex: 3),
     );
   }
 
-  Widget _buildToggleRow(String label, bool value, Function(bool) onChanged) {
-    return Row(
-      mainAxisAlignment: MainAxisAlignment.spaceBetween,
-      children: [
-        Text(
-          label,
-          style: const TextStyle(
-            fontSize: 16,
-            color: AppStyles.primaryBlue,
-          ),
-        ),
-        Switch(
-          value: value,
-          onChanged: onChanged,
-          activeThumbColor: const Color(0xFFC9E090),
-          activeTrackColor: const Color(0xFFD7EDB2),
-        ),
-      ],
-    );
-  }
-
-  Widget _buildTextRow(String label, String? trailing) {
-    return InkWell(
-      onTap: () {
-        // TODO: Handle navigation
-      },
-      child: Padding(
-        padding: const EdgeInsets.symmetric(vertical: 4),
-        child: Row(
-          mainAxisAlignment: MainAxisAlignment.spaceBetween,
-          children: [
-            Text(
-              label,
-              style: const TextStyle(
-                fontSize: 16,
-                color: AppStyles.primaryBlue,
-              ),
-            ),
-            if (trailing != null)
-              Text(
-                trailing,
-                style: const TextStyle(
-                  fontSize: 16,
-                  color: Colors.grey,
-                ),
-              ),
-          ],
-        ),
-      ),
-    );
-  }
-}
-
-class _BottomNavBar extends StatelessWidget {
-  final int current;
-  const _BottomNavBar({required this.current});
-
-  @override
-  Widget build(BuildContext context) {
+  Widget _buildProfileCard(String name, int avatarIdx) {
     return Container(
-      margin: const EdgeInsets.all(16),
-      padding: const EdgeInsets.symmetric(vertical: 12),
+      padding: const EdgeInsets.all(24),
       decoration: BoxDecoration(
-        color: AppStyles.primaryBlue,
-        borderRadius: BorderRadius.circular(28),
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(25),
+        border: Border.all(color: const Color(0xFFBDD87B), width: 3),
+        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
       ),
-      child: Row(
-        mainAxisAlignment: MainAxisAlignment.spaceEvenly,
+      child: Column(
         children: [
-          _NavItem(
-            icon: Icons.home,
-            label: 'Inicio',
-            selected: current == 0,
-            onTap: () {
-              // Pop until we reach the home route
-              Navigator.of(context).popUntil((route) => route.settings.name == '/home');
-            },
+          CircleAvatar(
+            radius: 50,
+            backgroundColor: const Color(0xFFF0F7FF),
+            backgroundImage: AssetImage(_avatarImages[avatarIdx % _avatarImages.length]),
           ),
-          _NavItem(
-            icon: Icons.menu_book,
-            label: 'Glosario',
-            selected: current == 1,
-            onTap: () {
-              // Pop current screen and push glossary
-              Navigator.pop(context);
-              Navigator.pushNamed(context, '/glossary');
-            },
-          ),
-          _NavItem(
-            icon: Icons.settings,
-            label: 'Ajustes',
-            selected: current == 2,
-            onTap: () {},
-          ),
+          const SizedBox(height: 16),
+          Text(name, style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
+          const Text('Explorador de PiensaPlay', style: TextStyle(color: Colors.grey, fontWeight: FontWeight.bold)),
         ],
       ),
     );
   }
-}
 
-class _NavItem extends StatelessWidget {
-  final IconData icon;
-  final String label;
-  final bool selected;
-  final VoidCallback onTap;
-  const _NavItem({
-    required this.icon,
-    required this.label,
-    required this.onTap,
-    this.selected = false,
-  });
+  Widget _buildSectionTitle(String title) {
+    return Padding(
+      padding: const EdgeInsets.only(left: 8, bottom: 16),
+      child: Text(title, style: const TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Color(0xFF132757))),
+    );
+  }
 
-  @override
-  Widget build(BuildContext context) {
-    return InkWell(
-      borderRadius: BorderRadius.circular(12),
+  Widget _buildSettingsTile(IconData icon, String label, bool value) {
+    return Container(
+      margin: const EdgeInsets.only(bottom: 12),
+      padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 8),
+      decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+      child: Row(
+        children: [
+          Icon(icon, color: const Color(0xFF132757)),
+          const SizedBox(width: 16),
+          Expanded(child: Text(label, style: const TextStyle(fontWeight: FontWeight.bold))),
+          Switch(value: value, onChanged: (v) {}, activeColor: const Color(0xFFBDD87B)),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildActionTile(IconData icon, String label, Color color, VoidCallback onTap) {
+    return GestureDetector(
       onTap: onTap,
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
-        child: Column(
-          mainAxisSize: MainAxisSize.min,
+      child: Container(
+        padding: const EdgeInsets.all(20),
+        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(15)),
+        child: Row(
           children: [
-            Icon(icon, color: Colors.white),
-            const SizedBox(height: 6),
-            Text(
-              label,
-              style: TextStyle(
-                color: Colors.white,
-                fontWeight: selected ? FontWeight.w700 : FontWeight.w500,
-              ),
-            ),
+            Icon(icon, color: color),
+            const SizedBox(width: 16),
+            Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
+            const Spacer(),
+            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color.withOpacity(0.5)),
           ],
         ),
+      ),
+    );
+  }
+
+  void _handleLogout(BuildContext context) {
+    showDialog(
+      context: context,
+      builder: (ctx) => AlertDialog(
+        title: const Text('¿Cerrar Sesión?'),
+        content: const Text('Tendrás que volver a ingresar tus datos para jugar.'),
+        actions: [
+          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
+          ElevatedButton(
+            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
+            onPressed: () async {
+              await LocalStorageService.logout();
+              if (!mounted) return;
+              Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
+            },
+            child: const Text('Salir', style: TextStyle(color: Colors.white)),
+          ),
+        ],
       ),
     );
   }

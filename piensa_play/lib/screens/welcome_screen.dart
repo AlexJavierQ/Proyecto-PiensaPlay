@@ -1,356 +1,223 @@
 import 'package:flutter/material.dart';
+import '../utils/app_styles.dart';
+import '../utils/local_storage_service.dart';
 
-class WelcomeScreen extends StatelessWidget {
+class WelcomeScreen extends StatefulWidget {
   const WelcomeScreen({super.key});
 
   @override
+  State<WelcomeScreen> createState() => _WelcomeScreenState();
+}
+
+class _WelcomeScreenState extends State<WelcomeScreen> {
+  @override
+  void initState() {
+    super.initState();
+    _checkSavedUser();
+  }
+
+  Future<void> _checkSavedUser() async {
+    await Future.delayed(const Duration(milliseconds: 1500));
+    final userData = await LocalStorageService.getUserData();
+    if (userData != null && mounted) {
+      Navigator.pushReplacementNamed(
+        context,
+        '/home',
+        arguments: {
+          'userId': userData['userId'],
+          'userName': userData['userName'],
+          'avatarIndex': int.tryParse(userData['userAvatar'] ?? '0') ?? 0,
+        },
+      );
+    }
+  }
+
+  @override
   Widget build(BuildContext context) {
-    final screenHeight = MediaQuery.of(context).size.height;
-    final screenWidth = MediaQuery.of(context).size.width;
-    
+    final size = MediaQuery.of(context).size;
+
     return Scaffold(
       body: Container(
         width: double.infinity,
         height: double.infinity,
-        decoration: const BoxDecoration(
-          gradient: LinearGradient(
-            begin: Alignment.topCenter,
-            end: Alignment.bottomCenter,
-            colors: [
-              Color(0xFF132757), // Color exacto del prototipo
-              Color(0xFF132757),  // Azul final
-            ],
-          ),
-        ),
+        decoration: const BoxDecoration(gradient: AppStyles.backgroundGradient),
         child: Stack(
+          alignment: Alignment.center,
           children: [
-            // Formas decorativas del fondo más sutiles y mejor posicionadas
-            // Círculo superior izquierda - verde grande
-            Positioned(
-              top: -screenHeight * 0.12,
-              left: -screenWidth * 0.35,
-              child: Container(
-                width: screenWidth * 0.85,
-                height: screenWidth * 0.85,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.12), 
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // Círculo superior derecha - cyan
-            Positioned(
-              top: screenHeight * 0.05,
-              right: -screenWidth * 0.45,
-              child: Container(
-                width: screenWidth * 1.0,
-                height: screenWidth * 1.0,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF06B6D4).withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // Círculo medio izquierda - azul claro
-            Positioned(
-              top: screenHeight * 0.35,
-              left: -screenWidth * 0.25,
-              child: Container(
-                width: screenWidth * 0.6,
-                height: screenWidth * 0.6,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.06),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // Círculo inferior - verde mediano
-            Positioned(
-              bottom: -screenHeight * 0.15,
-              left: -screenWidth * 0.15,
-              child: Container(
-                width: screenWidth * 0.9,
-                height: screenWidth * 0.9,
-                decoration: BoxDecoration(
-                  color: const Color(0xFF10B981).withValues(alpha: 0.08),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // Círculo inferior derecha - blanco sutil
-            Positioned(
-              bottom: -screenHeight * 0.25,
-              right: -screenWidth * 0.3,
-              child: Container(
-                width: screenWidth * 1.1,
-                height: screenWidth * 1.1,
-                decoration: BoxDecoration(
-                  color: Colors.white.withValues(alpha: 0.04),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
-            // Círculo pequeño superior centro - accent
-            Positioned(
-              top: screenHeight * 0.15,
-              right: screenWidth * 0.15,
-              child: Container(
-                width: screenWidth * 0.3,
-                height: screenWidth * 0.3,
-                decoration: BoxDecoration(
-                  color: const Color(0xFFFBBF24).withValues(alpha: 0.06),
-                  shape: BoxShape.circle,
-                ),
-              ),
-            ),
+            // Círculos decorativos normalizados
+            _buildDecorativeCircle(top: -size.height * 0.1, left: -size.width * 0.2, color: AppStyles.accentGreen.withValues(alpha: 0.15), size: 300),
+            _buildDecorativeCircle(bottom: -size.height * 0.1, right: -size.width * 0.1, color: AppStyles.lightBlue.withValues(alpha: 0.1), size: 250),
             
-            // Contenido principal
-            SizedBox(
-              width: double.infinity,
-              height: double.infinity,
+            SafeArea(
               child: SingleChildScrollView(
-                child: ConstrainedBox(
-                  constraints: BoxConstraints(
-                    minHeight: screenHeight,
-                  ),
-                  child: Padding(
-                    padding: EdgeInsets.only(
-                      top: MediaQuery.of(context).padding.top + 20,
-                      bottom: MediaQuery.of(context).padding.bottom + 20,
-                      left: 32.0,
-                      right: 32.0,
-                    ),
-                    child: Column(
-                      mainAxisAlignment: MainAxisAlignment.spaceEvenly,
-                      children: [
-                        // Spacer para empujar contenido hacia el centro
-                        SizedBox(height: screenHeight * 0.06),
-                        
-                        // Logo/Mascota con círculo verde - las orejas sobresalen
-                        Stack(
-                          alignment: Alignment.center,
-                          clipBehavior: Clip.none, // Permite que las orejas sobresalgan
-                          children: [
-                            // Círculo verde de fondo
-
-                            // donde puedo editar la posicion de circulo? quiero bajar un poco el circulo
-                            
-
-                            Container(
-                              width: screenWidth * 0.34,
-                              height: screenWidth * 0.34,
-                              decoration: BoxDecoration(
-                                color: const Color.fromRGBO(189, 216, 123, 1), // Verde exacto del prototipo
-                                shape: BoxShape.circle,
-                                boxShadow: [
-                                  BoxShadow(
-                                    color: Colors.black.withValues(alpha: 0.25),
-                                    blurRadius: 24,
-                                    offset: const Offset(0, 12),
-                                    spreadRadius: 2,
-                                  ),
-                                ],
-                              ),
-                            ),
-                            // Mascota posicionada para que las orejas sobresalgan
-                            Positioned(
-                              top: -screenWidth * 0.09, // Subir la mascota para que las orejas sobresalgan
-                              child: Image.asset(
-                                'assets/image-removebg-preview 1.png',
-                                width: screenWidth * 0.45, // Más grande para que las orejas sobresalgan
-                                height: screenWidth * 0.45,
-                                fit: BoxFit.contain,
-                              ),
-                            ),
-                          ],
+                child: Padding(
+                  padding: const EdgeInsets.symmetric(horizontal: 32.0, vertical: 20.0),
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    crossAxisAlignment: CrossAxisAlignment.center,
+                    children: [
+                      SizedBox(height: size.height * 0.05),
+                      // Mascota centralizada
+                      _buildMascot(size.width * 0.45),
+                      
+                      SizedBox(height: AppStyles.spacingXLarge),
+                      
+                      const Text(
+                        '¡Bienvenido a\nPiensaPlay!',
+                        textAlign: TextAlign.center,
+                        style: AppStyles.headingLarge,
+                      ),
+                      
+                      const SizedBox(height: AppStyles.spacingMedium),
+                      
+                      const Text(
+                        '¿Listo para aprender sobre\nmedios y seguridad digital?',
+                        textAlign: TextAlign.center,
+                        style: TextStyle(
+                          fontSize: 18,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w400,
                         ),
-                        
-                        SizedBox(height: screenHeight * 0.04),
-                        
-                        // Título de bienvenida
-                        const Text(
-                          '¡Bienvenido a\nPiensaPlay!',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 32,
-                            fontWeight: FontWeight.w800, // Más bold
-                            color: Colors.white,
-                            height: 1.1,
-                            letterSpacing: 0.5,
-                          ),
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.02),
-                        
-                        // Subtítulo
-                        const Text(
-                          '¿Listo para aprender sobre\nmedios y seguridad digital?',
-                          textAlign: TextAlign.center,
-                          style: TextStyle(
-                            fontSize: 16,
-                            fontWeight: FontWeight.w400,
-                            color: Colors.white,
-                            height: 1.4,
-                            letterSpacing: 0.2,
-                          ),
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.06),
-                        
-                        // Botón Comenzar - exacto al prototipo
-                        Container(
-                          width: 220,
-                          height: 56,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.3),
-                                blurRadius: 16,
-                                offset: const Offset(0, 8),
-                                spreadRadius: 1,
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                          onPressed: () {
-                            Navigator.pushNamed(context, '/login');
-                          },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color(0xFFF6E16B), // Amarillo exacto
-                              foregroundColor: const Color(0xFF1E3A8A),
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                              shadowColor: Colors.transparent,
-                            ),
-                            child: Row(
-                              mainAxisAlignment: MainAxisAlignment.center,
-                              mainAxisSize: MainAxisSize.min,
-                              children: [
-                                const Text(
-                                  'Comenzar',
-                                  style: TextStyle(
-                                    fontSize: 18,
-                                    fontWeight: FontWeight.w700,
-                                    color: Color(0xFF1E3A8A),
-                                    letterSpacing: 0.5,
-                                  ),
-                                ),
-                                const SizedBox(width: 8),
-                                const Icon(
-                                  Icons.arrow_forward,
-                                  color: Color(0xFF1E3A8A),
-                                  size: 20,
-                                ),
-                              ],
-                            ),
-                          ),
-                        ),
-                        
-                        const SizedBox(height: 16),
-                        
-                        // Botón Ver Tutorial - verde exacto
-                        Container(
-                          width: 220,
-                          height: 56,
-                          margin: const EdgeInsets.symmetric(horizontal: 8),
-                          decoration: BoxDecoration(
-                            borderRadius: BorderRadius.circular(28),
-                            boxShadow: [
-                              BoxShadow(
-                                color: Colors.black.withValues(alpha: 0.25),
-                                blurRadius: 12,
-                                offset: const Offset(0, 6),
-                                spreadRadius: 0,
-                              ),
-                            ],
-                          ),
-                          child: ElevatedButton(
-                            onPressed: () {
-                              // TODO: Implementar navegación al tutorial
-                            },
-                            style: ElevatedButton.styleFrom(
-                              backgroundColor: const Color.fromRGBO(160, 230, 157, 0.5), // Verde exacto
-                              foregroundColor: Colors.white,
-                              shape: RoundedRectangleBorder(
-                                borderRadius: BorderRadius.circular(28),
-                              ),
-                              elevation: 0,
-                              shadowColor: Colors.transparent,
-                            ),
-                            child: const Text(
-                              'Ver Tutorial',
-                              style: TextStyle(
-                                fontSize: 18,
-                                fontWeight: FontWeight.w600,
-                                color: Colors.white,
-                                letterSpacing: 0.3,
-                              ),
-                            ),
-                          ),
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.03),
-                        
-                        // Selector de idioma - más sutil
-                        Container(
-                          padding: const EdgeInsets.symmetric(horizontal: 18, vertical: 10),
-                          decoration: BoxDecoration(
-                            color: Colors.white.withValues(alpha: 0.15),
-                            borderRadius: BorderRadius.circular(25),
-                            border: Border.all(
-                              color: Colors.white.withValues(alpha: 0.2),
-                              width: 1,
-                            ),
-                          ),
-                          child: Row(
-                            mainAxisSize: MainAxisSize.min,
-                            children: [
-                              Container(
-                                width: 26,
-                                height: 26,
-                                decoration: const BoxDecoration(
-                                  color: Colors.white,
-                                  shape: BoxShape.circle,
-                                ),
-                                child: const Icon(
-                                  Icons.language,
-                                  size: 16,
-                                  color: Color(0xFF1E3A8A),
-                                ),
-                              ),
-                              const SizedBox(width: 8),
-                              const Text(
-                                'Español',
-                                style: TextStyle(
-                                  fontSize: 15,
-                                  fontWeight: FontWeight.w600,
-                                  color: Colors.white,
-                                  letterSpacing: 0.2,
-                                ),
-                              ),
-                              const SizedBox(width: 6),
-                              const Icon(
-                                Icons.keyboard_arrow_down,
-                                color: Colors.white,
-                                size: 18,
-                              ),
-                            ],
-                          ),
-                        ),
-                        
-                        SizedBox(height: screenHeight * 0.03),
-                      ],
-                    ),
+                      ),
+                      
+                      SizedBox(height: size.height * 0.08),
+                      
+                      // Botones normalizados y centrados
+                      _buildMainButton(
+                        label: 'Comenzar',
+                        onPressed: () => Navigator.pushNamed(context, '/login'),
+                        icon: Icons.play_arrow_rounded,
+                        color: AppStyles.yellow,
+                        textColor: AppStyles.primaryBlue,
+                      ),
+                      
+                      const SizedBox(height: 16),
+                      
+                      _buildMainButton(
+                        label: 'Ver Tutorial',
+                        onPressed: () {},
+                        icon: Icons.help_outline_rounded,
+                        color: Colors.white.withValues(alpha: 0.2),
+                        textColor: Colors.white,
+                      ),
+                      
+                      SizedBox(height: size.height * 0.05),
+                      
+                      // Selector de idioma sutil
+                      _buildLanguageSelector(),
+                    ],
                   ),
                 ),
               ),
             ),
           ],
         ),
+      ),
+    );
+  }
+
+  Widget _buildDecorativeCircle({double? top, double? bottom, double? left, double? right, required Color color, required double size}) {
+    return Positioned(
+      top: top, bottom: bottom, left: left, right: right,
+      child: Container(
+        width: size,
+        height: size,
+        decoration: BoxDecoration(color: color, shape: BoxShape.circle),
+      ),
+    );
+  }
+
+  Widget _buildMascot(double size) {
+    return Stack(
+      alignment: Alignment.center,
+      clipBehavior: Clip.none,
+      children: [
+        Container(
+          width: size * 0.75,
+          height: size * 0.75,
+          decoration: BoxDecoration(
+            color: const Color(0xFFBDD87B),
+            shape: BoxShape.circle,
+            boxShadow: [
+              BoxShadow(
+                color: Colors.black.withValues(alpha: 0.2),
+                blurRadius: 20,
+                offset: const Offset(0, 10),
+              ),
+            ],
+          ),
+        ),
+        Positioned(
+          top: -size * 0.2,
+          child: Image.asset(
+            'assets/image-removebg-preview 1.png',
+            width: size,
+            height: size,
+            fit: BoxFit.contain,
+          ),
+        ),
+      ],
+    );
+  }
+
+  Widget _buildMainButton({
+    required String label,
+    required VoidCallback onPressed,
+    required IconData icon,
+    required Color color,
+    required Color textColor,
+  }) {
+    return Container(
+      width: 240,
+      height: 60,
+      decoration: BoxDecoration(
+        borderRadius: BorderRadius.circular(30),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.15),
+            blurRadius: 10,
+            offset: const Offset(0, 5),
+          ),
+        ],
+      ),
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: color,
+          foregroundColor: textColor,
+          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
+          elevation: 0,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          children: [
+            Text(
+              label,
+              style: TextStyle(fontSize: 18, fontWeight: FontWeight.bold, color: textColor),
+            ),
+            const SizedBox(width: 8),
+            Icon(icon, size: 24, color: textColor),
+          ],
+        ),
+      ),
+    );
+  }
+
+  Widget _buildLanguageSelector() {
+    return Container(
+      padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 8),
+      decoration: BoxDecoration(
+        color: Colors.white.withValues(alpha: 0.1),
+        borderRadius: BorderRadius.circular(20),
+      ),
+      child: const Row(
+        mainAxisSize: MainAxisSize.min,
+        children: [
+          Icon(Icons.language, size: 18, color: Colors.white),
+          SizedBox(width: 8),
+          Text('Español', style: TextStyle(color: Colors.white, fontWeight: FontWeight.w500)),
+          Icon(Icons.keyboard_arrow_down, color: Colors.white),
+        ],
       ),
     );
   }

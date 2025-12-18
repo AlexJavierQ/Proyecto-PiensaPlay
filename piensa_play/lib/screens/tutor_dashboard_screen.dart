@@ -45,10 +45,7 @@ class TutorDashboardScreen extends StatelessWidget {
             const SizedBox(height: 8),
             const Text(
               '¿Qué deseas hacer hoy?',
-              style: TextStyle(
-                fontSize: 16,
-                color: AppStyles.textLight,
-              ),
+              style: TextStyle(fontSize: 16, color: AppStyles.textLight),
             ),
             const SizedBox(height: 32),
             _DashboardCard(
@@ -70,7 +67,6 @@ class TutorDashboardScreen extends StatelessWidget {
                 Navigator.pushNamed(context, '/manage_games');
               },
             ),
-            // Add more cards here for future features (e.g., Manage Activities)
           ],
         ),
       ),
@@ -115,10 +111,7 @@ class _DashboardCard extends StatelessWidget {
             Container(
               width: 60,
               height: 60,
-              decoration: BoxDecoration(
-                color: color,
-                shape: BoxShape.circle,
-              ),
+              decoration: BoxDecoration(color: color, shape: BoxShape.circle),
               child: Icon(icon, size: 30, color: AppStyles.primaryBlue),
             ),
             const SizedBox(width: 16),
@@ -145,7 +138,11 @@ class _DashboardCard extends StatelessWidget {
                 ],
               ),
             ),
-            const Icon(Icons.arrow_forward_ios, size: 16, color: AppStyles.textLight),
+            const Icon(
+              Icons.arrow_forward_ios,
+              size: 16,
+              color: AppStyles.textLight,
+            ),
           ],
         ),
       ),

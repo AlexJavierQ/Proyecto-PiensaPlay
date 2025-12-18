@@ -1,103 +1,57 @@
-# PiensaPlay
+# PiensaPlay 🚀
 
-Una aplicación móvil educativa para niños diseñada para enseñar sobre medios y seguridad digital de manera divertida e interactiva.
+Una plataforma educativa gamificada diseñada para que niños y niñas aprendan sobre **alfabetización mediática** y **seguridad digital** de manera divertida, segura e interactiva.
 
-## Características
+## 🌟 Características Principales
 
-- 🎨 Interfaz colorida y amigable para niños
-- 🧸 Sistema de avatares personalizables
-- 📱 Diseño responsivo para diferentes dispositivos
-- 🔐 Enfoque en seguridad digital educativa
+- **Aprendizaje Basado en Juegos:** Misiones interactivas sobre Fake News, Estereotipos y Ciberbullying.
+- **Ruta de Aprendizaje:** Mapa de actividades con progresión lógica (Intro -> Instrucciones -> Juego -> Examen).
+- **Perfiles Personalizados:** Selección de avatares y etiquetas únicas (#TAG) para cada pequeño aventurero.
+- **Panel del Tutor:** Herramientas para que profesores y padres gestionen el contenido y el glosario.
+- **Backend Robusto:** Sincronización en tiempo real con Firebase Firestore.
+- **Diseño Kids-First:** Interfaz vibrante, centrada y optimizada para la facilidad de uso infantil.
 
-## Estructura del Proyecto
+## 🛠️ Estructura del Proyecto
 
-```
+```text
 lib/
-├── main.dart                 # Punto de entrada de la aplicación
-├── screens/                  # Pantallas de la aplicación
-│   ├── welcome_screen.dart   # Pantalla de bienvenida
-│   └── login_screen.dart     # Pantalla de creación de perfil
-├── utils/                    # Utilidades y configuraciones
-│   └── app_styles.dart       # Estilos globales de la aplicación
-└── widgets/                  # Widgets reutilizables (para futuro uso)
+├── main.dart                 # Configuración de rutas y Firebase
+├── screens/                  # +25 Pantallas organizadas por flujo
+│   ├── welcome/login         # Onboarding del usuario
+│   ├── home_screen.dart      # Dashboard principal (Aventura)
+│   ├── game_units/           # Mapa de misiones y unidades
+│   ├── games/                # Lógica de minijuegos (Fake News, Word Path, etc.)
+│   └── tutor/                # Gestión administrativa
+├── utils/                    # Servicios (Firebase, LocalStorage) y Estilos
+└── widgets/                  # Componentes UI reutilizables y popups de feedback
 ```
 
-## Pantallas Implementadas
+## 🚀 Flujo de la Aplicación
 
-### 1. Pantalla de Bienvenida (`WelcomeScreen`)
-- Presenta la mascota de PiensaPlay
-- Botón "Comenzar" para navegar al registro
-- Botón "Ver Tutorial" (preparado para implementación futura)
-- Selector de idioma (preparado para implementación futura)
+1.  **Onboarding:** El niño crea su perfil con un avatar y recibe un TAG único.
+2.  **Dashboard:** Un centro de mando que motiva al niño a continuar su última misión.
+3.  **Mapa de Misiones:** Visualización del progreso a través de diferentes desafíos temáticos.
+4.  **Minijuegos:** Actividades prácticas donde se aplican los conceptos aprendidos.
+5.  **Glosario:** Un diccionario interactivo para reforzar el vocabulario digital.
 
-### 2. Pantalla de Registro (`LoginScreen`)
-- Formulario para nombre y edad del niño
-- Selector de avatares con 4 opciones
-- Validación de campos requeridos
-- Interfaz preparada para integración con Firebase
+## 🎨 Identidad Visual
 
-## Estilos y Diseño
+- **Colores:** Azul Profundo (`#132757`), Amarillo Sol (`#F6E16B`), Verde Aventura (`#BDD87B`).
+- **Tipografía:** Arial / Rounded para máxima legibilidad.
+- **Mascota:** Un compañero guía que aparece en momentos clave para dar instrucciones.
 
-El archivo `app_styles.dart` contiene:
-- **Paleta de colores** consistente con el diseño
-- **Gradientes** para fondos atractivos
-- **Estilos de texto** tipográficos
-- **Estilos de botones** reutilizables
-- **Decoraciones** para contenedores y elementos UI
-- **Espaciado** consistente
+## 🛠️ Tecnologías
 
-### Colores Principales
-- Azul Primario: `#1E3A8A`
-- Azul Secundario: `#3B82F6`
-- Verde Acento: `#10B981`
-- Amarillo: `#FBBF24`
+- **Flutter & Dart** (SDK ^3.9.2)
+- **Firebase Core & Cloud Firestore** (Persistencia de datos)
+- **Shared Preferences** (Persistencia local de sesión)
 
-## Assets
+## 🏗️ Cómo Empezar
 
-Los assets están organizados en la carpeta `assets/`:
-- `image-removebg-preview 1.png` - Mascota principal
-- `Vector.png`, `Vector (2).png`, `Vector (3).png`, `Vector (4).png` - Avatares de usuario
-- `image 2.png` - Asset adicional
-
-## Flujo de Navegación Actual
-
-1. **Bienvenida** → Usuario ve la pantalla inicial con la mascota
-2. **Comenzar** → Navegación a la pantalla de registro
-3. **Registro** → Usuario completa su perfil y selecciona avatar
-4. **¡A Jugar!** → Preparado para navegación a la siguiente fase
-
-## Próximos Pasos de Desarrollo
-
-- [ ] Integración con Firebase Authentication
-- [ ] Implementación de pantallas de juegos educativos
-- [ ] Sistema de progreso y logros
-- [ ] Funcionalidad de tutorial interactivo
-- [ ] Soporte multiidioma
-- [ ] Análisis de uso y métricas educativas
-
-## Comandos de Desarrollo
-
-```bash
-# Obtener dependencias
-flutter pub get
-
-# Ejecutar la aplicación
-flutter run
-
-# Ejecutar tests
-flutter test
-
-# Analizar código
-flutter analyze
-```
-
-## Tecnologías
-
-- **Flutter** - Framework de desarrollo multiplataforma
-- **Dart** - Lenguaje de programación
-- **Firebase** - Backend as a Service (próxima integración)
-- **Material Design** - Sistema de diseño base
+1.  Asegúrate de tener Flutter instalado.
+2.  Clona el repositorio.
+3.  Ejecuta `flutter pub get`.
+4.  **Importante:** Reinicia la app por completo tras la primera compilación para cargar los plugins nativos.
 
 ---
-
-Desarrollado para enseñar seguridad digital de manera divertida e interactiva para niños.
+*Desarrollado para empoderar a la próxima generación de ciudadanos digitales.*

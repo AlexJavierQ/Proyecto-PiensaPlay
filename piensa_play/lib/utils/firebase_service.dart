@@ -1,12 +1,7 @@
 import 'dart:async';
-
-// Removed unused Flutter imports; no UI or debugPrint needed here.
-
 import 'package:cloud_firestore/cloud_firestore.dart';
 
 class FirebaseService {
-  // No explicit initialization check needed if we assume main.dart does it.
-  // But we can keep a simple check if we want, or just trust main.
   
   /// Creates a user document in `users` collection and returns the document id.
   static Future<String?> createUser(Map<String, dynamic> data) async {
@@ -15,7 +10,7 @@ class FirebaseService {
     return doc.id;
   }
 
-  /// Validates tutor credentials. Returns tutor ID if valid, null otherwise.
+  /// Validates tutor credentials.
   static Future<String?> validateTutor(String username, String password) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('tutors')
@@ -45,7 +40,7 @@ class FirebaseService {
     await FirebaseFirestore.instance.collection('glossary_terms').doc(id).delete();
   }
 
-  // ==================== GAME UNITS ====================
+  // ==================== GAME UNITS & ACTIVITIES ====================
   
   /// Fetches all game units.
   static Stream<QuerySnapshot> getGameUnits() {
@@ -71,36 +66,35 @@ class FirebaseService {
     await FirebaseFirestore.instance.collection('game_units').doc(id).delete();
   }
 
-  // ==================== GAME PROGRESS ====================
-  
-  /// Saves or updates game progress for a user.
-  static Future<void> saveGameProgress(Map<String, dynamic> data) async {
-    final userId = data['userId'];
-    final unitId = data['unitId'];
-    final gameId = data['gameId'];
-    
-    final query = await FirebaseFirestore.instance
-        .collection('game_progress')
-        .where('userId', isEqualTo: userId)
-        .where('unitId', isEqualTo: unitId)
-        .where('gameId', isEqualTo: gameId)
-        .limit(1)
-        .get();
-    
-    if (query.docs.isEmpty) {
-      await FirebaseFirestore.instance.collection('game_progress').add(data);
-    } else {
-      await FirebaseFirestore.instance
-          .collection('game_progress')
-          .doc(query.docs.first.id)
-          .update(data);
-    }
+  /// Fetches activities for a specific unit.
+  static Stream<QuerySnapshot> getUnitActivities(String unitId) {
+    return FirebaseFirestore.instance
+        .collection('game_units')
+        .doc(unitId)
+        .collection('activities')
+        .orderBy('order')
+        .snapshots();
   }
 
-  /// Gets all game progress for a specific user.
+  // ==================== GAME PROGRESS ====================
+  
+  static Future<void> saveGameProgress(String userId, String unitId, String activityId, Map<String, dynamic> progressData) async {
+    final docId = '${userId}_${unitId}_${activityId}';
+    await FirebaseFirestore.instance
+        .collection('user_progress')
+        .doc(docId)
+        .set({
+          'userId': userId,
+          'unitId': unitId,
+          'activityId': activityId,
+          ...progressData,
+          'updatedAt': FieldValue.serverTimestamp(),
+        }, SetOptions(merge: true));
+  }
+
   static Stream<QuerySnapshot> getUserProgress(String userId) {
     return FirebaseFirestore.instance
-        .collection('game_progress')
+        .collection('user_progress')
         .where('userId', isEqualTo: userId)
         .snapshots();
   }
