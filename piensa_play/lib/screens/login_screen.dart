@@ -15,6 +15,7 @@ class LoginScreen extends StatefulWidget {
 class _LoginScreenState extends State<LoginScreen> {
   final TextEditingController _nameController = TextEditingController();
   final TextEditingController _ageController = TextEditingController();
+  final TextEditingController _tagController = TextEditingController();
   int _selectedAvatar = 0;
 
   final List<String> _avatarImages = [
@@ -107,6 +108,23 @@ class _LoginScreenState extends State<LoginScreen> {
               _buildAvatarGrid(),
               
               const SizedBox(height: 40),
+              
+              // Existing user login
+              const Text(
+                '¿Ya tienes un perfil?',
+                style: TextStyle(
+                  fontSize: 18,
+                  fontWeight: FontWeight.bold,
+                  color: AppStyles.primaryBlue,
+                ),
+                textAlign: TextAlign.center,
+              ),
+              
+              const SizedBox(height: 16),
+              
+              _buildTagLoginCard(),
+              
+              const SizedBox(height: 32),
               
               // Botón de acción principal
               _buildSubmitButton(),
@@ -240,6 +258,53 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  Widget _buildTagLoginCard() {
+    return Container(
+      padding: const EdgeInsets.all(24.0),
+      decoration: BoxDecoration(
+        color: Colors.white,
+        borderRadius: BorderRadius.circular(24),
+        border: Border.all(color: AppStyles.yellow.withValues(alpha: 0.5), width: 3),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withValues(alpha: 0.05),
+            blurRadius: 15,
+            offset: const Offset(0, 8),
+          ),
+        ],
+      ),
+      child: Column(
+        children: [
+          _buildTextField(
+            controller: _tagController,
+            hintText: 'Ingresa tu tag (ej: 123456)',
+            icon: Icons.tag,
+            isNumber: true,
+          ),
+          const SizedBox(height: 16),
+          SizedBox(
+            width: double.infinity,
+            height: 50,
+            child: ElevatedButton(
+              onPressed: _isSaving ? null : _handleTagLogin,
+              style: ElevatedButton.styleFrom(
+                backgroundColor: AppStyles.primaryBlue,
+                shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
+                elevation: 4,
+              ),
+              child: _isSaving
+                  ? const CircularProgressIndicator(color: Colors.white)
+                  : const Text(
+                      'INICIAR SESIÓN',
+                      style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: Colors.white),
+                    ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
@@ -303,6 +368,44 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
+  Future<void> _handleTagLogin() async {
+    if (_tagController.text.isEmpty) {
+      _showError('Por favor, ingresa tu tag');
+      return;
+    }
+
+    setState(() => _isSaving = true);
+    try {
+      final userData = await FirebaseService.getUserByTag(_tagController.text.trim());
+      if (userData != null) {
+        final id = userData['id'];
+        final name = userData['name'];
+        final tag = userData['tag'];
+        final avatarIndex = userData['avatarIndex'] ?? 0;
+
+        await LocalStorageService.saveUserData(
+          userId: id,
+          userName: '$name#$tag',
+          userAvatar: avatarIndex.toString(),
+        );
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home', arguments: {
+          'userId': id,
+          'userName': '$name#$tag',
+          'avatarIndex': avatarIndex,
+          'userTag': tag,
+        });
+      } else {
+        _showError('Tag no encontrado. Verifica e intenta de nuevo.');
+      }
+    } catch (e) {
+      _showError('Hubo un problema: $e');
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
   void _showError(String msg) {
     ScaffoldMessenger.of(context).showSnackBar(
       SnackBar(content: Text(msg), backgroundColor: Colors.redAccent, behavior: SnackBarBehavior.floating),
@@ -331,6 +434,7 @@ class _LoginScreenState extends State<LoginScreen> {
   void dispose() {
     _nameController.dispose();
     _ageController.dispose();
+    _tagController.dispose();
     super.dispose();
   }
 }

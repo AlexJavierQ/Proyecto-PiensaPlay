@@ -10,6 +10,19 @@ class FirebaseService {
     return doc.id;
   }
 
+  /// Gets a user by tag.
+  static Future<Map<String, dynamic>?> getUserByTag(String tag) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('tag', isEqualTo: tag)
+        .limit(1)
+        .get();
+    if (snapshot.docs.isNotEmpty) {
+      return {'id': snapshot.docs.first.id, ...snapshot.docs.first.data()};
+    }
+    return null;
+  }
+
   /// Validates tutor credentials.
   static Future<String?> validateTutor(String username, String password) async {
     final snapshot = await FirebaseFirestore.instance
