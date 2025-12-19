@@ -11,6 +11,10 @@ class TutorDashboardScreen extends StatelessWidget {
       appBar: AppBar(
         backgroundColor: AppStyles.primaryBlue,
         elevation: 0,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
         title: const Text(
           'Panel del Tutor',
           style: TextStyle(
