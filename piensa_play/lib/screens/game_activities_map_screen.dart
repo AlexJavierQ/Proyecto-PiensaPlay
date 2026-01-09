@@ -138,60 +138,78 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen> {
   }
 
   Widget _buildMapHeader(BuildContext context, String? unitId, Map<String, dynamic> unitData, List<Map<String, dynamic>> activities) {
-    return Container(
-      margin: const EdgeInsets.symmetric(horizontal: 20),
-      height: 350,
-      child: Stack(
-        clipBehavior: Clip.none,
-        children: [
-          Container(
-            decoration: BoxDecoration(
-              color: Colors.white,
-              borderRadius: BorderRadius.circular(25),
-              border: Border.all(color: Colors.black, width: 2),
-              image: const DecorationImage(image: AssetImage('assets/background_map.png'), fit: BoxFit.cover, opacity: 0.8),
-              boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))],
-            ),
-            child: Stack(
-              children: [
-                if (activities.isNotEmpty)
-                  _buildMapPoint(
-                    top: 40, left: 60, 
-                    color: Color(activities[0]['color'] ?? 0xFFF9879B), 
-                    number: '1', 
-                    icon: activities[0]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[0]['icon']),
-                    onTap: activities[0]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[0]),
+    return LayoutBuilder(
+      builder: (context, constraints) {
+        // Altura proporcional o fija pero segura
+        final height = 350.0; 
+        
+        return Container(
+          margin: const EdgeInsets.symmetric(horizontal: 20),
+          height: height,
+          child: Stack(
+            clipBehavior: Clip.none,
+            children: [
+              Container(
+                width: double.infinity,
+                decoration: BoxDecoration(
+                  color: Colors.white,
+                  borderRadius: BorderRadius.circular(25),
+                  border: Border.all(color: Colors.black, width: 2),
+                  image: const DecorationImage(
+                    image: AssetImage('assets/background_map.png'), 
+                    fit: BoxFit.cover, 
+                    opacity: 0.8
                   ),
-                if (activities.length > 1)
-                  _buildMapPoint(
-                    top: 130, right: 80, 
-                    color: Color(activities[1]['color'] ?? 0xFF87CEEB), 
-                    number: '2', 
-                    icon: activities[1]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[1]['icon']),
-                    onTap: activities[1]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[1]),
-                  ),
-                if (activities.length > 2)
-                  _buildMapPoint(
-                    top: 220, left: 50, 
-                    color: Color(activities[2]['color'] ?? 0xFFBDBDBD), 
-                    number: '3', 
-                    icon: activities[2]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[2]['icon']),
-                    onTap: activities[2]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[2]),
-                  ),
-                if (activities.length > 3)
-                  _buildMapPoint(
-                    bottom: 40, right: 60, 
-                    color: Color(activities[3]['color'] ?? 0xFFBDBDBD), 
-                    number: '4', 
-                    icon: activities[3]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[3]['icon']),
-                    onTap: activities[3]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[3]),
-                  ),
-              ],
-            ),
+                  boxShadow: const [BoxShadow(color: Colors.black12, blurRadius: 10, offset: Offset(0, 5))],
+                ),
+                child: Stack(
+                  children: [
+                    // Puntos posicionados con Alignment relativo (x, y) donde 0,0 es centro
+                    // x va de -1 (izq) a 1 (der), y va de -1 (arriba) a 1 (abajo)
+                    if (activities.isNotEmpty)
+                      _buildResponsiveMapPoint(
+                        alignment: const Alignment(-0.6, -0.7), // Arriba Izquierda
+                        color: Color(activities[0]['color'] ?? 0xFFF9879B),
+                        number: '1',
+                        icon: activities[0]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[0]['icon']),
+                        onTap: activities[0]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[0]),
+                      ),
+                    if (activities.length > 1)
+                      _buildResponsiveMapPoint(
+                        alignment: const Alignment(0.6, -0.2), // Medio Derecha
+                        color: Color(activities[1]['color'] ?? 0xFF87CEEB),
+                        number: '2',
+                        icon: activities[1]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[1]['icon']),
+                        onTap: activities[1]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[1]),
+                      ),
+                    if (activities.length > 2)
+                      _buildResponsiveMapPoint(
+                        alignment: const Alignment(-0.5, 0.3), // Medio Abajo Izquierda
+                        color: Color(activities[2]['color'] ?? 0xFFBDBDBD),
+                        number: '3',
+                        icon: activities[2]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[2]['icon']),
+                        onTap: activities[2]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[2]),
+                      ),
+                    if (activities.length > 3)
+                      _buildResponsiveMapPoint(
+                        alignment: const Alignment(0.5, 0.8), // Abajo Derecha
+                        color: Color(activities[3]['color'] ?? 0xFFBDBDBD),
+                        number: '4',
+                        icon: activities[3]['isCompleted'] == true ? Icons.check_rounded : _getIconData(activities[3]['icon']),
+                        onTap: activities[3]['status'] == 'locked' ? null : () => _onPlayActivity(context, unitId, unitData, activities[3]),
+                      ),
+                  ],
+                ),
+              ),
+              Positioned(
+                top: -20, 
+                right: -10, 
+                child: Image.asset('assets/image-removebg-preview 1.png', width: 100, height: 100, fit: BoxFit.contain)
+              ),
+            ],
           ),
-          Positioned(top: -20, right: -10, child: Image.asset('assets/image-removebg-preview 1.png', width: 100, height: 100, fit: BoxFit.contain)),
-        ],
-      ),
+        );
+      }
     );
   }
 
@@ -205,9 +223,15 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen> {
     }
   }
 
-  Widget _buildMapPoint({double? top, double? left, double? right, double? bottom, required Color color, required String number, required IconData icon, VoidCallback? onTap}) {
-    return Positioned(
-      top: top, left: left, right: right, bottom: bottom,
+  Widget _buildResponsiveMapPoint({
+    required Alignment alignment, 
+    required Color color, 
+    required String number, 
+    required IconData icon, 
+    VoidCallback? onTap
+  }) {
+    return Align(
+      alignment: alignment,
       child: GestureDetector(
         onTap: onTap,
         child: Stack(
@@ -215,14 +239,22 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen> {
           children: [
             Container(
               width: 50, height: 50,
-              decoration: BoxDecoration(color: color.withOpacity(0.8), shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 2)),
+              decoration: BoxDecoration(
+                color: color.withValues(alpha: 0.8), 
+                shape: BoxShape.circle, 
+                border: Border.all(color: Colors.black, width: 2)
+              ),
               child: Center(child: Icon(icon, color: Colors.white, size: 24)),
             ),
             Positioned(
               top: -5, right: -5,
               child: Container(
                 padding: const EdgeInsets.all(4),
-                decoration: BoxDecoration(color: const Color(0xFFF6E16B), shape: BoxShape.circle, border: Border.all(color: Colors.black, width: 1)),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFF6E16B), 
+                  shape: BoxShape.circle, 
+                  border: Border.all(color: Colors.black, width: 1)
+                ),
                 child: Text(number, style: const TextStyle(fontSize: 10, fontWeight: FontWeight.bold)),
               ),
             )

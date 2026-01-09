@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
 import '../utils/local_storage_service.dart';
+import '../widgets/piensa_error_widget.dart';
 
 class FakeNewsDetectorScreen extends StatefulWidget {
   const FakeNewsDetectorScreen({super.key});
@@ -20,17 +21,24 @@ class _FakeNewsDetectorScreenState extends State<FakeNewsDetectorScreen> {
     final activityData = args?['activityData'] as Map<String, dynamic>? ?? {};
     final String unitId = args?['unitId'] ?? '';
 
-    final String postAuthor = activityData['author'] ?? '@SuperSaludable';
-    final String postTitle = activityData['title'] ?? '¡CURA MÁGICA PARA EL RESFRIADO!';
-    final String postContent = activityData['content'] ?? 'Científicos descubren que beber agua con limón y miel ¡ELIMINA INSTANTÁNEAMENTE CUALQUIER VIRUS! Compartir con todos tus contactos para protegerlos. 🍋✨';
-    final String postFooter = activityData['footer'] ?? '¡Comparte ahora o podrías enfermar en las próximas 24 horas! 😱';
-    final List<dynamic> clues = activityData['clues'] ?? [
-      'Lenguaje exagerado: "ELIMINA INSTANTÁNEAMENTE"',
-      'Amenaza o presión: "Compartir o podrías enfermar"',
-      'Falta de fuentes científicas verificables',
-      'Uso de mayúsculas y signos de exclamación excesivos',
-    ];
-    final bool isReal = activityData['isReal'] ?? false;
+    // Verificación de datos críticos
+    if (activityData.isEmpty || !activityData.containsKey('isReal')) {
+      return Scaffold(
+        appBar: AppBar(title: const Text('Error')),
+        body: PiensaErrorWidget(
+          message: 'No se pudo cargar la información de la actividad.\nIntenta volver al mapa.',
+          buttonText: 'Volver',
+          onRetry: () => Navigator.pop(context),
+        ),
+      );
+    }
+
+    final String postAuthor = activityData['author'] ?? 'Desconocido';
+    final String postTitle = activityData['title'] ?? 'Sin título';
+    final String postContent = activityData['content'] ?? '...';
+    final String postFooter = activityData['footer'] ?? '';
+    final List<dynamic> clues = activityData['clues'] ?? [];
+    final bool isReal = activityData['isReal']; // Ya verificamos que existe
 
     return Scaffold(
       backgroundColor: Colors.white,

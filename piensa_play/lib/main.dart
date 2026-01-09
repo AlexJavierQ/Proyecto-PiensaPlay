@@ -26,20 +26,22 @@ import 'screens/word_path_screen.dart';
 import 'screens/game_instructions_screen.dart';
 import 'screens/activity_intro_screen.dart';
 
-Future<void> main() async {
+void main() {
   WidgetsFlutterBinding.ensureInitialized();
-  try {
-    await Firebase.initializeApp(
-      options: DefaultFirebaseOptions.currentPlatform,
-    );
-  } catch (e) {
-    debugPrint('Firebase init error: $e');
-  }
   runApp(const PiensaPlayApp());
 }
 
-class PiensaPlayApp extends StatelessWidget {
+class PiensaPlayApp extends StatefulWidget {
   const PiensaPlayApp({super.key});
+
+  @override
+  State<PiensaPlayApp> createState() => _PiensaPlayAppState();
+}
+
+class _PiensaPlayAppState extends State<PiensaPlayApp> {
+  final Future<FirebaseApp> _initialization = Firebase.initializeApp(
+    options: DefaultFirebaseOptions.currentPlatform,
+  );
 
   @override
   Widget build(BuildContext context) {
@@ -51,7 +53,39 @@ class PiensaPlayApp extends StatelessWidget {
         fontFamily: 'Arial',
         visualDensity: VisualDensity.adaptivePlatformDensity,
       ),
-      initialRoute: '/',
+      home: FutureBuilder(
+        future: _initialization,
+        builder: (context, snapshot) {
+          if (snapshot.hasError) {
+            return Scaffold(
+              body: Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  children: [
+                    const Icon(Icons.error_outline, size: 60, color: Colors.red),
+                    const SizedBox(height: 16),
+                    Text(
+                      'Error al conectar con la base de datos:\n${snapshot.error}',
+                      textAlign: TextAlign.center,
+                      style: const TextStyle(fontSize: 16),
+                    ),
+                  ],
+                ),
+              ),
+            );
+          }
+
+          if (snapshot.connectionState == ConnectionState.done) {
+            return const WelcomeScreen();
+          }
+
+          return const Scaffold(
+            body: Center(
+              child: CircularProgressIndicator(),
+            ),
+          );
+        },
+      ),
       onGenerateRoute: (settings) {
         // Manejo centralizado de argumentos para evitar pantallas negras
         final args = settings.arguments as Map<String, dynamic>? ?? {};
