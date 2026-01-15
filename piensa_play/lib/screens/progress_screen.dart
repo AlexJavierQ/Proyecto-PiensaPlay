@@ -2,6 +2,7 @@ import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/firebase_service.dart';
 import '../widgets/custom_bottom_nav.dart';
+import '../widgets/widgets.dart';
 
 class ProgressScreen extends StatelessWidget {
   final String userId;
@@ -54,10 +55,23 @@ class ProgressScreen extends StatelessWidget {
               
               int totalXP = 0;
               int completedActivities = progressDocs.length;
+              Set<String> completedTypes = {};
               
               for (var doc in progressDocs) {
                 final data = doc.data() as Map<String, dynamic>;
                 totalXP += (data['score'] as num? ?? 0).toInt();
+                
+                // Intentar extraer el tipo de actividad del ID o de un campo type si existiera
+                // El ID de progreso es usually userId_unitId_activityId
+                // Podríamos necesitar guardar el tipo en el progreso para ser más precisos
+                if (data['activityId'] != null) {
+                   // Por ahora simulamos que si completó algo cuenta
+                   // En el futuro, FirebaseService.saveGameProgress debería guardar el 'type'
+                }
+                // Si guardamos el type en el progreso:
+                if (data['type'] != null) {
+                  completedTypes.add(data['type']);
+                }
               }
 
               return ListView(
@@ -68,7 +82,7 @@ class ProgressScreen extends StatelessWidget {
                   const SizedBox(height: 32),
                   _buildGeneralProgressCard(completedActivities),
                   const SizedBox(height: 32),
-                  _buildBadgesSection(completedActivities),
+                  _buildBadgesSection(completedActivities, totalXP, completedTypes),
                   const SizedBox(height: 32),
                   _buildRecentActivities(progressDocs),
                 ],
@@ -136,7 +150,7 @@ class ProgressScreen extends StatelessWidget {
       decoration: BoxDecoration(
         color: const Color(0xFF132757),
         borderRadius: BorderRadius.circular(25),
-        boxShadow: [BoxShadow(color: const Color(0xFF132757).withOpacity(0.3), blurRadius: 20, offset: const Offset(0, 10))],
+        boxShadow: [BoxShadow(color: const Color(0xFF132757).withValues(alpha: 0.3), blurRadius: 20, offset: const Offset(0, 10))],
       ),
       child: Column(
         children: [
@@ -179,42 +193,20 @@ class ProgressScreen extends StatelessWidget {
     );
   }
 
-  Widget _buildBadgesSection(int completed) {
+  Widget _buildBadgesSection(int completed, int totalPoints, Set<String> completedTypes) {
+    // Calcular logros usando la lógica centralizada
+    final achievements = PiensaPlayAchievements.getAll(
+      completedActivities: completed,
+      totalPoints: totalPoints,
+      completedTypes: completedTypes,
+    );
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         const Text('Tus Insignias', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
         const SizedBox(height: 16),
-        GridView.count(
-          shrinkWrap: true,
-          physics: const NeverScrollableScrollPhysics(),
-          crossAxisCount: 3,
-          mainAxisSpacing: 16,
-          crossAxisSpacing: 16,
-          children: [
-            _buildBadgeItem(Icons.search, 'Detective', completed >= 1),
-            _buildBadgeItem(Icons.verified_user_rounded, 'Veraz', completed >= 2),
-            _buildBadgeItem(Icons.shield_rounded, 'Guardián', completed >= 3),
-          ],
-        ),
-      ],
-    );
-  }
-
-  Widget _buildBadgeItem(IconData icon, String label, bool unlocked) {
-    return Column(
-      children: [
-        Container(
-          width: 60, height: 60,
-          decoration: BoxDecoration(
-            color: unlocked ? const Color(0xFFF6E16B) : Colors.grey[200],
-            shape: BoxShape.circle,
-            border: Border.all(color: unlocked ? const Color(0xFF132757) : Colors.transparent, width: 2),
-          ),
-          child: Icon(icon, color: unlocked ? const Color(0xFF132757) : Colors.grey[400], size: 28),
-        ),
-        const SizedBox(height: 8),
-        Text(label, style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: unlocked ? const Color(0xFF132757) : Colors.grey), textAlign: TextAlign.center),
+        AchievementsGrid(achievements: achievements),
       ],
     );
   }

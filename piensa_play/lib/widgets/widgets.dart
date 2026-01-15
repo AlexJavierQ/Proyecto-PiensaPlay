@@ -8,3 +8,4 @@ export 'score_card_widget.dart';
 export 'activity_button_widget.dart';
 export 'scenario_card_widget.dart';
 export 'learning_points_widget.dart';
+export 'achievement_badge.dart';

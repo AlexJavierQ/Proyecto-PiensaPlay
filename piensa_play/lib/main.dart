@@ -1,6 +1,8 @@
 import 'package:flutter/material.dart';
 import 'package:firebase_core/firebase_core.dart';
 import 'firebase_options.dart';
+import 'utils/app_styles.dart';
+import 'utils/firebase_service.dart';
 import 'screens/welcome_screen.dart';
 import 'screens/login_screen.dart';
 import 'screens/home_screen.dart';
@@ -25,6 +27,20 @@ import 'screens/stereotype_breaker_screen.dart';
 import 'screens/word_path_screen.dart';
 import 'screens/game_instructions_screen.dart';
 import 'screens/activity_intro_screen.dart';
+import 'screens/quiz_game_screen.dart';
+import 'screens/match_pairs_screen.dart';
+import 'screens/memory_game_screen.dart';
+import 'screens/order_sequence_screen.dart';
+import 'screens/fill_blanks_screen.dart';
+import 'screens/rewards_shop_screen.dart';
+import 'screens/splash_screen.dart';
+import 'screens/celebration_screen.dart';
+import 'screens/create_class_screen.dart';
+import 'screens/join_class_screen.dart';
+import 'screens/class_detail_screen.dart';
+import 'screens/student_classes_screen.dart';
+import 'utils/custom_page_route.dart';
+
 
 void main() {
   WidgetsFlutterBinding.ensureInitialized();
@@ -39,9 +55,21 @@ class PiensaPlayApp extends StatefulWidget {
 }
 
 class _PiensaPlayAppState extends State<PiensaPlayApp> {
-  final Future<FirebaseApp> _initialization = Firebase.initializeApp(
-    options: DefaultFirebaseOptions.currentPlatform,
-  );
+  late Future<void> _initializationFuture;
+
+  @override
+  void initState() {
+    super.initState();
+    _initializationFuture = _initializeApp();
+  }
+
+  Future<void> _initializeApp() async {
+    await Firebase.initializeApp(
+      options: DefaultFirebaseOptions.currentPlatform,
+    );
+    // Initialize demo data if needed
+    await FirebaseService.initializeDemoData();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -49,12 +77,24 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
       title: 'PiensaPlay',
       debugShowCheckedModeBanner: false,
       theme: ThemeData(
-        primarySwatch: Colors.blue,
+        useMaterial3: true,
+        colorScheme: ColorScheme.fromSeed(
+          seedColor: AppStyles.primaryBlue,
+          primary: AppStyles.primaryBlue,
+          secondary: AppStyles.accentGreen,
+        ),
         fontFamily: 'Arial',
         visualDensity: VisualDensity.adaptivePlatformDensity,
+        scaffoldBackgroundColor: AppStyles.backgroundLight,
+        appBarTheme: const AppBarTheme(
+          backgroundColor: AppStyles.primaryBlue,
+          foregroundColor: Colors.white,
+          elevation: 0,
+          centerTitle: true,
+        ),
       ),
       home: FutureBuilder(
-        future: _initialization,
+        future: _initializationFuture,
         builder: (context, snapshot) {
           if (snapshot.hasError) {
             return Scaffold(
@@ -177,15 +217,86 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
           case '/activity_intro':
             builder = const ActivityIntroScreen();
             break;
+          case '/quiz_game':
+            builder = const QuizGameScreen();
+            break;
+          case '/match_pairs':
+            builder = const MatchPairsScreen();
+            break;
+          case '/memory_game':
+            builder = const MemoryGameScreen();
+            break;
+          case '/order_sequence':
+            builder = const OrderSequenceScreen();
+            break;
+          case '/fill_blanks':
+            builder = const FillBlanksScreen();
+            break;
+          case '/rewards_shop':
+            builder = RewardsShopScreen(
+              userId: args['userId'] ?? (args['user'] as Map<String, dynamic>?)?['id'] ?? 'temp',
+            );
+            break;
+          case '/splash':
+            builder = const SplashScreen();
+            break;
+          case '/celebration':
+            builder = const CelebrationScreen();
+            break;
+          case '/create_class':
+            builder = CreateClassScreen(
+              tutorId: args['tutorId'] ?? 'demo_tutor',
+            );
+            break;
+          case '/join_class':
+            builder = JoinClassScreen(
+              userId: args['userId'] ?? 'temp',
+              userName: args['userName'] ?? 'Usuario',
+            );
+            break;
+          case '/class_detail':
+            builder = ClassDetailScreen(
+              classId: args['classId'] ?? '',
+              classData: args['classData'] ?? {},
+              isTutor: args['isTutor'] ?? false,
+            );
+            break;
+          case '/student_classes':
+            builder = StudentClassesScreen(
+              userId: args['userId'] ?? 'temp',
+              userName: args['userName'] ?? 'Usuario',
+            );
+            break;
           default:
             builder = const WelcomeScreen();
         }
         
-        return MaterialPageRoute(
-          builder: (context) => builder,
+        // Usar transiciones personalizadas
+        return createRoute(
+          builder,
+          type: _getTransitionType(settings.name),
           settings: settings,
         );
       },
     );
+  }
+
+  RouteTransitionType _getTransitionType(String? routeName) {
+    switch (routeName) {
+      case '/celebration':
+        return RouteTransitionType.scale;
+      case '/splash':
+        return RouteTransitionType.fade;
+      case '/home':
+      case '/glossary':
+      case '/progress':
+      case '/settings':
+        return RouteTransitionType.fadeScale;
+      case '/rewards_shop':
+      case '/tutor_dashboard':
+        return RouteTransitionType.slideUp;
+      default:
+        return RouteTransitionType.slideAndFade;
+    }
   }
 }

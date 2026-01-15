@@ -76,7 +76,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
         color: Colors.white,
         borderRadius: BorderRadius.circular(25),
         border: Border.all(color: const Color(0xFFBDD87B), width: 3),
-        boxShadow: [BoxShadow(color: Colors.black.withOpacity(0.05), blurRadius: 15, offset: const Offset(0, 8))],
+        boxShadow: [BoxShadow(color: Colors.black.withValues(alpha: 0.05), blurRadius: 15, offset: const Offset(0, 8))],
       ),
       child: Column(
         children: [
@@ -128,7 +128,7 @@ class _SettingsScreenState extends State<SettingsScreen> {
             const SizedBox(width: 16),
             Text(label, style: TextStyle(color: color, fontWeight: FontWeight.bold, fontSize: 16)),
             const Spacer(),
-            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color.withOpacity(0.5)),
+            Icon(Icons.arrow_forward_ios_rounded, size: 16, color: color.withValues(alpha: 0.5)),
           ],
         ),
       ),

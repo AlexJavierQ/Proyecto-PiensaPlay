@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import '../utils/app_styles.dart';
 import '../utils/local_storage_service.dart';
 
 class CustomBottomNav extends StatelessWidget {
@@ -12,20 +13,39 @@ class CustomBottomNav extends StatelessWidget {
     final userData = await LocalStorageService.getUserData();
     if (!context.mounted) return;
 
-    String route = '/home';
-    switch (index) {
-      case 0: route = '/home'; break;
-      case 1: route = '/glossary'; break;
-      case 2: route = '/progress'; break;
-      case 3: route = '/settings'; break;
+    // Si no hay usuario guardado, redirigir al login
+    if (userData == null || userData['userId'] == null) {
+      Navigator.pushNamedAndRemoveUntil(context, '/', (route) => false);
+      return;
     }
 
-    // USAMOS PUSH REPLACEMENT para no acumular pantallas en memoria
-    // y pasamos los argumentos necesarios para que Firebase no falle.
+    String route;
+    switch (index) {
+      case 0:
+        route = '/home';
+        break;
+      case 1:
+        route = '/glossary';
+        break;
+      case 2:
+        route = '/progress';
+        break;
+      case 3:
+        route = '/settings';
+        break;
+      default:
+        route = '/home';
+    }
+
     Navigator.pushReplacementNamed(
       context, 
       route, 
-      arguments: userData,
+      arguments: {
+        'userId': userData['userId'],
+        'userName': userData['userName'],
+        'avatarIndex': int.tryParse(userData['userAvatar'] ?? '0') ?? 0,
+        'userTag': userData['userName']?.split('#').last ?? '',
+      },
     );
   }
 
@@ -33,12 +53,20 @@ class CustomBottomNav extends StatelessWidget {
   Widget build(BuildContext context) {
     return Container(
       margin: const EdgeInsets.fromLTRB(20, 0, 20, 20),
-      height: 70,
+      height: 72,
       decoration: BoxDecoration(
-        color: const Color(0xFF132757),
-        borderRadius: BorderRadius.circular(35),
+        gradient: const LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
+          colors: [Color(0xFF132757), Color(0xFF1E3A8A)],
+        ),
+        borderRadius: BorderRadius.circular(36),
         boxShadow: [
-          BoxShadow(color: Colors.black26, blurRadius: 10, offset: const Offset(0, 5)),
+          BoxShadow(
+            color: const Color(0xFF132757).withValues(alpha: 0.4),
+            blurRadius: 20,
+            offset: const Offset(0, 10),
+          ),
         ],
       ),
       child: Row(
@@ -55,22 +83,50 @@ class CustomBottomNav extends StatelessWidget {
 
   Widget _buildItem(BuildContext context, int index, IconData icon, String label) {
     final bool isActive = currentIndex == index;
-    final Color color = isActive ? const Color(0xFFF6E16B) : Colors.white.withOpacity(0.5);
     
-    return InkWell(
+    return GestureDetector(
       onTap: () => _onTap(context, index),
-      borderRadius: BorderRadius.circular(20),
-      child: Padding(
-        padding: const EdgeInsets.symmetric(horizontal: 12),
+      behavior: HitTestBehavior.opaque,
+      child: AnimatedContainer(
+        duration: const Duration(milliseconds: 200),
+        curve: Curves.easeOutCubic,
+        padding: EdgeInsets.symmetric(
+          horizontal: isActive ? 16 : 12,
+          vertical: 8,
+        ),
+        decoration: isActive
+            ? BoxDecoration(
+                color: Colors.white.withValues(alpha: 0.15),
+                borderRadius: BorderRadius.circular(20),
+              )
+            : null,
         child: Column(
+          mainAxisSize: MainAxisSize.min,
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, color: color, size: 26),
-            const SizedBox(height: 2),
-            Text(label, style: TextStyle(color: color, fontSize: 10, fontWeight: FontWeight.bold)),
+            AnimatedScale(
+              scale: isActive ? 1.1 : 1.0,
+              duration: const Duration(milliseconds: 200),
+              child: Icon(
+                icon,
+                color: isActive ? AppStyles.yellow : Colors.white.withValues(alpha: 0.5),
+                size: isActive ? 28 : 24,
+              ),
+            ),
+            const SizedBox(height: 4),
+            AnimatedDefaultTextStyle(
+              duration: const Duration(milliseconds: 200),
+              style: TextStyle(
+                color: isActive ? AppStyles.yellow : Colors.white.withValues(alpha: 0.5),
+                fontSize: isActive ? 11 : 10,
+                fontWeight: isActive ? FontWeight.w700 : FontWeight.w500,
+              ),
+              child: Text(label),
+            ),
           ],
         ),
       ),
     );
   }
 }
+

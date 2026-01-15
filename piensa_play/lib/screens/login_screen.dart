@@ -26,6 +26,7 @@ class _LoginScreenState extends State<LoginScreen> {
   ];
 
   bool _isSaving = false;
+  bool _showExistingUserForm = false;
 
   Future<String> _generateUniqueCode() async {
     final rand = Random();
@@ -107,27 +108,32 @@ class _LoginScreenState extends State<LoginScreen> {
               // Grid de avatares centrado
               _buildAvatarGrid(),
               
-              const SizedBox(height: 40),
-              
-              // Existing user login
-              const Text(
-                '¿Ya tienes un perfil?',
-                style: TextStyle(
-                  fontSize: 18,
-                  fontWeight: FontWeight.bold,
-                  color: AppStyles.primaryBlue,
-                ),
-                textAlign: TextAlign.center,
-              ),
-              
-              const SizedBox(height: 16),
-              
-              _buildTagLoginCard(),
-              
               const SizedBox(height: 32),
               
               // Botón de acción principal
               _buildSubmitButton(),
+              
+              const SizedBox(height: 24),
+              
+              // Divisor visual
+              Row(
+                children: [
+                  Expanded(child: Divider(color: AppStyles.textLight.withValues(alpha: 0.3))),
+                  Padding(
+                    padding: const EdgeInsets.symmetric(horizontal: 16),
+                    child: Text(
+                      'o',
+                      style: TextStyle(color: AppStyles.textLight, fontWeight: FontWeight.w500),
+                    ),
+                  ),
+                  Expanded(child: Divider(color: AppStyles.textLight.withValues(alpha: 0.3))),
+                ],
+              ),
+              
+              const SizedBox(height: 16),
+              
+              // Link discreto para usuarios existentes
+              _buildExistingUserLink(),
               
               const SizedBox(height: 24),
               
@@ -324,6 +330,44 @@ class _LoginScreenState extends State<LoginScreen> {
                 style: TextStyle(fontSize: 18, fontWeight: FontWeight.w800, color: Colors.white, letterSpacing: 1.2),
               ),
       ),
+    );
+  }
+
+  Widget _buildExistingUserLink() {
+    return Column(
+      children: [
+        TextButton(
+          onPressed: () => setState(() => _showExistingUserForm = !_showExistingUserForm),
+          child: Row(
+            mainAxisAlignment: MainAxisAlignment.center,
+            children: [
+              Text(
+                '¿Ya tienes un perfil? ',
+                style: TextStyle(color: AppStyles.textLight, fontSize: 16),
+              ),
+              Text(
+                _showExistingUserForm ? 'Ocultar' : 'Ingresa con tu tag',
+                style: TextStyle(color: AppStyles.primaryBlue, fontWeight: FontWeight.bold, fontSize: 16),
+              ),
+              Icon(
+                _showExistingUserForm ? Icons.expand_less : Icons.expand_more,
+                color: AppStyles.primaryBlue,
+              ),
+            ],
+          ),
+        ),
+        AnimatedCrossFade(
+          firstChild: const SizedBox.shrink(),
+          secondChild: Padding(
+            padding: const EdgeInsets.only(top: 16),
+            child: _buildTagLoginCard(),
+          ),
+          crossFadeState: _showExistingUserForm 
+              ? CrossFadeState.showSecond 
+              : CrossFadeState.showFirst,
+          duration: const Duration(milliseconds: 300),
+        ),
+      ],
     );
   }
 

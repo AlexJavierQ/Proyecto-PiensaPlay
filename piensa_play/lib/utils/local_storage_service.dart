@@ -42,6 +42,12 @@ class LocalStorageService {
     return null;
   }
 
+  // Obtener solo el ID del usuario
+  static Future<String?> getUserId() async {
+    final prefs = await SharedPreferences.getInstance();
+    return prefs.getString(_userIdKey);
+  }
+
   // Cerrar sesión (limpiar datos)
   static Future<void> logout() async {
     final prefs = await SharedPreferences.getInstance();

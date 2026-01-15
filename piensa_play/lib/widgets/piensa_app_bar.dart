@@ -23,7 +23,7 @@ class PiensaAppBar extends StatelessWidget implements PreferredSizeWidget {
         ? Padding(
             padding: const EdgeInsets.all(8.0),
             child: CircleAvatar(
-              backgroundColor: Colors.white.withOpacity(0.2),
+              backgroundColor: Colors.white.withValues(alpha: 0.2),
               child: IconButton(
                 icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 18),
                 onPressed: () => Navigator.maybePop(context),
