@@ -19,7 +19,7 @@
 lib/
 ├── main.dart                    # Punto de entrada, rutas y configuración
 ├── firebase_options.dart        # Configuración de Firebase
-├── screens/                     # Todas las pantallas (37 archivos)
+├── screens/                     # Todas las pantallas (34 archivos)
 ├── widgets/                     # Componentes reutilizables (13 archivos)
 └── utils/                       # Utilidades y servicios (5 archivos)
 ```
@@ -46,8 +46,7 @@ WelcomeScreen → LoginScreen → HomeScreen
 WelcomeScreen → TutorLoginScreen → TutorDashboardScreen
                                         ├── CreateClassScreen
                                         ├── ClassDetailScreen (Unidades, Estudiantes, Ajustes)
-                                        ├── CreateGameUnitScreen
-                                        └── ManageGlossaryScreen
+                                        └── CreateGameUnitScreen
 ```
 
 ---
@@ -112,15 +111,12 @@ WelcomeScreen → TutorLoginScreen → TutorDashboardScreen
 | Archivo | Descripción |
 |---------|-------------|
 | `rewards_shop_screen.dart` | Tienda con avatares, marcos y temas |
-| `glossary_screen.dart` | Glosario de términos aprendidos |
+| `glossary_screen.dart` | Glosario de términos aprendidos (Global, solo lectura) |
 
 ### Gestión (Tutor)
 
 | Archivo | Descripción |
 |---------|-------------|
-| `manage_glossary_screen.dart` | Administrar términos del glosario |
-| `add_glossary_term_screen.dart` | Agregar nuevo término |
-| `manage_games_screen.dart` | Administrar juegos |
 | `create_game_unit_screen.dart` | Crear nueva unidad de juego |
 | `game_form_dialog.dart` | Formulario para crear actividades |
 
@@ -319,6 +315,8 @@ flutter build apk
 4. **Estado**: Actualmente no hay gestión de estado global (Provider/Riverpod). Los datos se pasan mediante argumentos de navegación.
 
 5. **Animaciones**: Se usan AnimationController y transiciones personalizadas para una experiencia fluida.
+
+6. **Diseño Inmersivo**: Las pantallas principales del estudiante ahora utilizan un modo inmersivo sin `SafeArea` y con headers personalizados para una mayor riqueza visual.
 
 ---
 

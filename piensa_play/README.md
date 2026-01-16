@@ -7,9 +7,10 @@ Una plataforma educativa gamificada diseñada para que niños y niñas aprendan 
 - **Aprendizaje Basado en Juegos:** Misiones interactivas sobre Fake News, Estereotipos y Ciberbullying.
 - **Ruta de Aprendizaje:** Mapa de actividades con progresión lógica (Intro -> Instrucciones -> Juego -> Examen).
 - **Perfiles Personalizados:** Selección de avatares y etiquetas únicas (#TAG) para cada pequeño aventurero.
-- **Panel del Tutor:** Herramientas para que profesores y padres gestionen el contenido y el glosario.
+- **Panel del Tutor:** Herramientas para gestionar clases, estudiantes y crear contenido personalizado.
+- **Glosario Global:** Un recurso de conocimiento unificado y de solo lectura para todos los estudiantes.
 - **Backend Robusto:** Sincronización en tiempo real con Firebase Firestore.
-- **Diseño Kids-First:** Interfaz vibrante, centrada y optimizada para la facilidad de uso infantil.
+- **Diseño Kids-First Inmersivo:** Interfaz vibrante, sin distracciones (full-screen) y optimizada para la facilidad de uso infantil.
 
 ## 🛠️ Estructura del Proyecto
 
@@ -21,7 +22,7 @@ lib/
 │   ├── home_screen.dart      # Dashboard principal (Aventura)
 │   ├── game_units/           # Mapa de misiones y unidades
 │   ├── games/                # Lógica de minijuegos (Fake News, Word Path, etc.)
-│   └── tutor/                # Gestión administrativa
+│   └── tutor/                # Gestión administrativa (Clases, Unidades)
 ├── utils/                    # Servicios (Firebase, LocalStorage) y Estilos
 └── widgets/                  # Componentes UI reutilizables y popups de feedback
 ```
@@ -30,13 +31,14 @@ lib/
 
 1.  **Onboarding:** El niño crea su perfil con un avatar y recibe un TAG único.
 2.  **Dashboard:** Un centro de mando que motiva al niño a continuar su última misión.
-3.  **Mapa de Misiones:** Visualización del progreso a través de diferentes desafíos temáticos.
+3.  **Mundo Abierto:** Exploración libre de unidades temáticas con diseño inmersivo.
 4.  **Minijuegos:** Actividades prácticas donde se aplican los conceptos aprendidos.
-5.  **Glosario:** Un diccionario interactivo para reforzar el vocabulario digital.
+5.  **Glosario:** Tarjetas de conocimiento para reforzar el vocabulario digital.
 
 ## 🎨 Identidad Visual
 
-- **Colores:** Azul Profundo (`#132757`), Amarillo Sol (`#F6E16B`), Verde Aventura (`#BDD87B`).
+- **Diseño Inmersivo:** Experiencia full-screen sin barras de sistema intrusivas.
+- **Colores:** Azul Profundo (`#132757`), Azul Vibrante (`#42A5F5`), Amarillo Sol (`#F6E16B`), Verde Aventura (`#BDD87B`).
 - **Tipografía:** Arial / Rounded para máxima legibilidad.
 - **Mascota:** Un compañero guía que aparece en momentos clave para dar instrucciones.
 
