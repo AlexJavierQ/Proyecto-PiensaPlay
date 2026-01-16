@@ -1,7 +1,52 @@
 import 'package:flutter/material.dart';
+import '../utils/firebase_service.dart';
+import '../utils/local_storage_service.dart';
 
-class ActivityCompletionScreen extends StatelessWidget {
+class ActivityCompletionScreen extends StatefulWidget {
   const ActivityCompletionScreen({super.key});
+
+  @override
+  State<ActivityCompletionScreen> createState() => _ActivityCompletionScreenState();
+}
+
+class _ActivityCompletionScreenState extends State<ActivityCompletionScreen> {
+  bool _progressSaved = false;
+
+  @override
+  void didChangeDependencies() {
+    super.didChangeDependencies();
+    if (!_progressSaved) {
+      _saveProgress();
+    }
+  }
+
+  Future<void> _saveProgress() async {
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
+    if (args == null) return;
+    
+    final unitId = args['unitId'] as String?;
+    final activityId = args['activityId'] as String?;
+    final correctAnswers = args['correctAnswers'] as int? ?? 0;
+    final incorrectAnswers = args['incorrectAnswers'] as int? ?? 0;
+    
+    final userData = await LocalStorageService.getUserData();
+    final userId = userData?['userId'];
+    
+    if (unitId != null && activityId != null && userId != null) {
+      try {
+        await FirebaseService.saveGameProgress(userId, unitId, activityId, {
+          'completed': true,
+          'correctAnswers': correctAnswers,
+          'incorrectAnswers': incorrectAnswers,
+          'score': correctAnswers / (correctAnswers + incorrectAnswers) * 100,
+          'completedAt': DateTime.now().toIso8601String(),
+        });
+        setState(() => _progressSaved = true);
+      } catch (e) {
+        debugPrint('Error saving progress: $e');
+      }
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -223,18 +268,22 @@ class ActivityCompletionScreen extends StatelessWidget {
   }
 
   Widget _buildActionButtons(BuildContext context, Map<String, dynamic>? args) {
+    final unitId = args?['unitId'];
+    final unitData = args?['unitData'];
+    
     return Column(
       children: [
         _buildButton('Siguiente Misión', const Color(0xFF132757), Colors.white, () {
-          Navigator.pushNamedAndRemoveUntil(context, '/game_activities_map', (r) => false, arguments: args);
+          // Volver a la lista de actividades (cerrando juego y pantalla de completado)
+          Navigator.popUntil(context, (route) {
+            // Buscamos volver hasta el mapa de actividades
+            return route.settings.name == '/game_activities_map';
+          });
         }),
         const SizedBox(height: 16),
-        _buildButton('Repetir Actividad', const Color(0xFFF6E16B), const Color(0xFF132757), () {
-          Navigator.pop(context);
-        }),
-        const SizedBox(height: 16),
-        _buildButton('Volver al Mapa', Colors.white, const Color(0xFF132757), () {
-          Navigator.pushNamedAndRemoveUntil(context, '/game_units', (r) => false);
+        _buildButton('Volver al Menú', Colors.white, const Color(0xFF132757), () {
+          // Ir al home principal (reinicio seguro)
+          Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
         }, isOutlined: true),
       ],
     );

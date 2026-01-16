@@ -396,15 +396,7 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
             },
           ),
         ),
-        const SizedBox(width: 12),
-        Expanded(
-          child: _QuickActionButton(
-            icon: Icons.menu_book_rounded,
-            label: 'Glosario',
-            gradient: const [Color(0xFF2196F3), Color(0xFF42A5F5)],
-            onTap: () => Navigator.pushNamed(context, '/manage_glossary'),
-          ),
-        ),
+
       ],
     );
   }

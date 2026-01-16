@@ -36,10 +36,9 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
   @override
   Widget build(BuildContext context) {
-    final args =
-        ModalRoute.of(context)!.settings.arguments as Map<String, dynamic>;
-    final unitData = args['unitData'] as Map<String, dynamic>;
-    final gameData = args['gameData'] as Map<String, dynamic>;
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+    final unitData = args['unitData'] as Map<String, dynamic>? ?? {};
+    final gameData = args['activityData'] as Map<String, dynamic>? ?? args['gameData'] as Map<String, dynamic>? ?? {};
 
     final correctWords =
         (gameData['correctWords'] as List?)?.cast<String>() ?? [];
@@ -49,24 +48,11 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
 
     return Scaffold(
       backgroundColor: const Color(0xFFF8FAFC),
-      appBar: AppBar(
-        backgroundColor: AppStyles.primaryBlue,
-        elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back, color: Colors.white),
-          onPressed: () => Navigator.pop(context),
-        ),
-        title: Text(
-          unitData['title'] ?? 'Juego',
-          style: const TextStyle(
-            fontSize: 20,
-            fontWeight: FontWeight.w600,
-            color: Colors.white,
-          ),
-        ),
-        centerTitle: false,
-      ),
-      body: SingleChildScrollView(
+      body: Column(
+        children: [
+          _buildHeader(context, unitData['title'] ?? 'Juego'),
+          Expanded(
+            child: SingleChildScrollView(
         child: Padding(
           padding: const EdgeInsets.all(24),
           child: Column(
@@ -415,6 +401,54 @@ class _GamePlayScreenState extends State<GamePlayScreen> {
             ],
           ),
         ),
+            ),
+          ),
+        ],
+      ),
+    );
+  }
+
+  Widget _buildHeader(BuildContext context, String title) {
+    final topPadding = MediaQuery.of(context).padding.top;
+    
+    return Container(
+      padding: EdgeInsets.only(top: topPadding + 10, left: 16, right: 16, bottom: 20),
+      decoration: BoxDecoration(
+        color: AppStyles.primaryBlue,
+        borderRadius: const BorderRadius.only(
+          bottomLeft: Radius.circular(24),
+          bottomRight: Radius.circular(24),
+        ),
+        boxShadow: [
+          BoxShadow(
+            color: AppStyles.primaryBlue.withValues(alpha: 0.3),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Row(
+        children: [
+          IconButton(
+            icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+            onPressed: () => Navigator.pop(context),
+            padding: EdgeInsets.zero,
+            constraints: const BoxConstraints(),
+          ),
+          const SizedBox(width: 16),
+          Expanded(
+            child: Text(
+              title,
+              style: const TextStyle(
+                fontSize: 20,
+                fontWeight: FontWeight.bold,
+                color: Colors.white,
+              ),
+              overflow: TextOverflow.ellipsis,
+            ),
+          ),
+          const Icon(Icons.videogame_asset_outlined, color: Colors.white54),
+        ],
       ),
     );
   }

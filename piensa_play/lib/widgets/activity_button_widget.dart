@@ -100,35 +100,40 @@ class AnswerButton extends StatelessWidget {
 
   @override
   Widget build(BuildContext context) {
-    return Expanded(
-      child: SizedBox(
-        height: 60,
-        child: ElevatedButton(
-          onPressed: onPressed,
-          style: ElevatedButton.styleFrom(
-            backgroundColor: isCorrect
-                ? const Color(0xFFC9E090)
-                : const Color(0xFFFF8FA3),
-            foregroundColor: Colors.white,
-            shape: RoundedRectangleBorder(
-              borderRadius: BorderRadius.circular(16),
-            ),
-            elevation: 2,
+    return SizedBox(
+      height: 56,
+      child: ElevatedButton(
+        onPressed: onPressed,
+        style: ElevatedButton.styleFrom(
+          backgroundColor: isCorrect
+              ? const Color(0xFFC9E090)
+              : const Color(0xFFFF8FA3),
+          foregroundColor: Colors.white,
+          shape: RoundedRectangleBorder(
+            borderRadius: BorderRadius.circular(16),
           ),
-          child: Row(
-            mainAxisAlignment: MainAxisAlignment.center,
-            children: [
-              Icon(icon ?? (isCorrect ? Icons.check : Icons.block), size: 24),
-              const SizedBox(width: 8),
-              Text(
+          padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
+          elevation: 2,
+        ),
+        child: Row(
+          mainAxisAlignment: MainAxisAlignment.center,
+          mainAxisSize: MainAxisSize.min,
+          children: [
+            Icon(icon ?? (isCorrect ? Icons.check : Icons.block), size: 20),
+            const SizedBox(width: 6),
+            Flexible(
+              child: Text(
                 text,
                 style: const TextStyle(
-                  fontSize: 18,
+                  fontSize: 13,
                   fontWeight: FontWeight.w700,
                 ),
+                overflow: TextOverflow.ellipsis,
+                maxLines: 2,
+                textAlign: TextAlign.center,
               ),
-            ],
-          ),
+            ),
+          ],
         ),
       ),
     );

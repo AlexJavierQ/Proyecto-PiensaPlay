@@ -21,11 +21,21 @@ class _MatchPairsScreenState extends State<MatchPairsScreen> {
   int _totalPoints = 0;
   bool _isComplete = false;
 
+  bool _initialized = false;
+
   void _initializeGame(Map<String, dynamic> activityData) {
-    if (_leftItems.isNotEmpty) return;
+    if (_initialized) return;
+    _initialized = true;
     
-    final pairsData = activityData['pairs'] as List? ?? _getDefaultPairs();
-    final pairs = pairsData.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+    // Obtener pairs del activityData, o usar defaults si está vacío
+    List<Map<String, dynamic>> pairs;
+    final pairsData = activityData['pairs'];
+    
+    if (pairsData != null && pairsData is List && pairsData.isNotEmpty) {
+      pairs = pairsData.map((p) => Map<String, dynamic>.from(p as Map)).toList();
+    } else {
+      pairs = _getDefaultPairs();
+    }
     
     _leftItems = pairs.asMap().entries.map((e) {
       return MatchItem(id: 'left_${e.key}', text: e.value['concept'] ?? '', pairId: e.key.toString());
@@ -200,18 +210,42 @@ class _MatchPairsScreenState extends State<MatchPairsScreen> {
               const SizedBox(height: 32),
               Text('$_totalPoints puntos', style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold, color: AppStyles.darkBlue)),
               const SizedBox(height: 32),
+              // Botón Continuar
               SizedBox(
                 width: double.infinity, height: 50,
                 child: ElevatedButton(
                   onPressed: () async {
                     final userId = await LocalStorageService.getUserId();
                     if (userId != null) {
-                      await FirebaseService.saveGameProgress(userId, unitId, activityData['id'] ?? '', {'completed': true, 'score': _totalPoints, 'type': activityData['type'] ?? 'match_pairs'});
+                      await FirebaseService.saveGameProgress(userId, unitId, activityData['id'] ?? 'game_0', {
+                        'completed': true, 
+                        'score': _totalPoints, 
+                        'type': activityData['type'] ?? 'match_pairs',
+                        'correctAnswers': _correctMatches,
+                        'incorrectAnswers': _attempts - _correctMatches,
+                      });
                     }
-                    if (mounted) Navigator.pushReplacementNamed(context, '/activity_completion', arguments: {...args, 'score': _totalPoints});
+                    if (mounted) {
+                      Navigator.popUntil(context, (route) => route.settings.name == '/game_activities_map');
+                    }
                   },
                   style: ElevatedButton.styleFrom(backgroundColor: const Color(0xFFC9E090), shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16))),
-                  child: const Text('CONTINUAR', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppStyles.darkBlue)),
+                  child: const Text('SIGUIENTE ACTIVIDAD', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppStyles.darkBlue)),
+                ),
+              ),
+              const SizedBox(height: 16),
+              // Botón Volver al Menú
+              SizedBox(
+                width: double.infinity, height: 50,
+                child: OutlinedButton(
+                  onPressed: () {
+                    Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+                  },
+                  style: OutlinedButton.styleFrom(
+                    side: const BorderSide(color: AppStyles.darkBlue, width: 2),
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                  ),
+                  child: const Text('VOLVER AL MENÚ', style: TextStyle(fontSize: 16, fontWeight: FontWeight.w800, color: AppStyles.darkBlue)),
                 ),
               ),
             ],

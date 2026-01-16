@@ -14,31 +14,43 @@ class FakeNewsDetectorScreen extends StatefulWidget {
 class _FakeNewsDetectorScreenState extends State<FakeNewsDetectorScreen> {
   bool _isAnswered = false;
 
+  /// Datos por defecto para actividades que no tienen configuración completa
+  Map<String, dynamic> _getDefaultFakeNewsData(Map<String, dynamic> baseData) {
+    return {
+      ...baseData,
+      'author': 'NoticiasVirales2024',
+      'title': '¡INCREÍBLE DESCUBRIMIENTO!',
+      'content': 'Científicos descubren que estudiar con música hace a los niños 500% más inteligentes. ¡Los colegios NO quieren que lo sepas! Comparte antes de que lo borren.',
+      'footer': 'www.noticiasfalsas-viral.com',
+      'clues': [
+        'Usa lenguaje exagerado ("500% más inteligentes")',
+        'Fuente no verificable',
+        'Pide compartir con urgencia',
+        'Afirma que "no quieren que lo sepas"',
+      ],
+      'isReal': false,
+      'instructions': 'Tu misión es detectar si esta noticia es REAL o FALSA. Analiza las pistas y decide.',
+    };
+  }
+
   @override
   Widget build(BuildContext context) {
-    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
-    final unitData = args?['unitData'] as Map<String, dynamic>? ?? {};
-    final activityData = args?['activityData'] as Map<String, dynamic>? ?? {};
-    final String unitId = args?['unitId'] ?? '';
+    final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>? ?? {};
+    final unitData = args['unitData'] as Map<String, dynamic>? ?? {};
+    final activityDataRaw = args['activityData'] as Map<String, dynamic>? ?? {};
+    final String unitId = args['unitId'] as String? ?? '';
 
-    // Verificación de datos críticos
-    if (activityData.isEmpty || !activityData.containsKey('isReal')) {
-      return Scaffold(
-        appBar: AppBar(title: const Text('Error')),
-        body: PiensaErrorWidget(
-          message: 'No se pudo cargar la información de la actividad.\nIntenta volver al mapa.',
-          buttonText: 'Volver',
-          onRetry: () => Navigator.pop(context),
-        ),
-      );
-    }
+    // Usar datos por defecto si la actividad no tiene los campos necesarios
+    final Map<String, dynamic> activityData = activityDataRaw.containsKey('isReal') 
+        ? activityDataRaw 
+        : _getDefaultFakeNewsData(activityDataRaw);
 
-    final String postAuthor = activityData['author'] ?? 'Desconocido';
-    final String postTitle = activityData['title'] ?? 'Sin título';
-    final String postContent = activityData['content'] ?? '...';
-    final String postFooter = activityData['footer'] ?? '';
-    final List<dynamic> clues = activityData['clues'] ?? [];
-    final bool isReal = activityData['isReal']; // Ya verificamos que existe
+    final String postAuthor = activityData['author'] ?? 'NoticiasVirales2024';
+    final String postTitle = activityData['title'] ?? '¡INCREÍBLE!';
+    final String postContent = activityData['content'] ?? 'Científicos descubren que estudiar con música hace a los niños 500% más inteligentes. ¡Comparte antes que lo borren!';
+    final String postFooter = activityData['footer'] ?? 'www.noticiasfalsas.com';
+    final List<dynamic> clues = activityData['clues'] ?? ['Usa lenguaje exagerado', 'Fuente no confiable', 'Pide compartir urgentemente'];
+    final bool isReal = activityData['isReal'] ?? false;
 
     return Scaffold(
       backgroundColor: Colors.white,

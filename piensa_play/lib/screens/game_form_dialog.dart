@@ -41,8 +41,9 @@ class _GameFormDialogState extends State<GameFormDialog> {
     {'type': 'order_sequence', 'name': 'Ordenar Secuencia', 'icon': Icons.sort, 'description': 'Ordenar pasos correctamente'},
     {'type': 'fill_blanks', 'name': 'Completar Oraciones', 'icon': Icons.edit_note, 'description': 'Llenar espacios en blanco'},
     {'type': 'word_selection', 'name': 'Sendero de Palabras', 'icon': Icons.route, 'description': 'Clasificar palabras positivas/negativas'},
-    {'type': 'fake_news', 'name': 'Detector de Fake News', 'icon': Icons.fact_check, 'description': 'Identificar noticias falsas'},
-    {'type': 'stereotype_breaker', 'name': 'Rompe Estereotipos', 'icon': Icons.diversity_3, 'description': 'Identificar estereotipos'},
+    // Tipos complejos ocultos para creación manual:
+    // {'type': 'fake_news', 'name': 'Detector de Fake News', 'icon': Icons.fact_check, 'description': 'Identificar noticias falsas'},
+    // {'type': 'stereotype_breaker', 'name': 'Rompe Estereotipos', 'icon': Icons.diversity_3, 'description': 'Identificar estereotipos'},
   ];
 
   @override
@@ -191,48 +192,39 @@ class _GameFormDialogState extends State<GameFormDialog> {
                       ),
                       const SizedBox(height: 24),
                       
-                      // Tipo de Juego
+                      // Tipo de Juego - ahora usa lista vertical para evitar overflow
                       const Text('Tipo de Actividad', style: TextStyle(fontSize: 16, fontWeight: FontWeight.bold, color: AppStyles.darkBlue)),
                       const SizedBox(height: 12),
                       
-                      GridView.builder(
-                        shrinkWrap: true,
-                        physics: const NeverScrollableScrollPhysics(),
-                        gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 2.5, crossAxisSpacing: 12, mainAxisSpacing: 12),
-                        itemCount: _gameTypes.length,
-                        itemBuilder: (context, index) {
-                          final type = _gameTypes[index];
+                      Wrap(
+                        spacing: 8,
+                        runSpacing: 8,
+                        children: _gameTypes.map((type) {
                           final isSelected = _selectedType == type['type'];
                           
-                          return InkWell(
+                          return GestureDetector(
                             onTap: () => setState(() => _selectedType = type['type'] as String),
-                            borderRadius: BorderRadius.circular(12),
                             child: Container(
-                              padding: const EdgeInsets.all(12),
+                              padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 8),
                               decoration: BoxDecoration(
                                 color: isSelected ? AppStyles.darkBlue : Colors.white,
-                                borderRadius: BorderRadius.circular(12),
+                                borderRadius: BorderRadius.circular(10),
                                 border: Border.all(color: isSelected ? AppStyles.darkBlue : Colors.grey.shade300, width: 2),
                               ),
                               child: Row(
+                                mainAxisSize: MainAxisSize.min,
                                 children: [
-                                  Icon(type['icon'] as IconData, size: 24, color: isSelected ? Colors.white : AppStyles.darkBlue),
-                                  const SizedBox(width: 8),
-                                  Expanded(
-                                    child: Column(
-                                      crossAxisAlignment: CrossAxisAlignment.start,
-                                      mainAxisAlignment: MainAxisAlignment.center,
-                                      children: [
-                                        Text(type['name'] as String, style: TextStyle(fontSize: 12, fontWeight: FontWeight.bold, color: isSelected ? Colors.white : AppStyles.darkBlue)),
-                                        Text(type['description'] as String, overflow: TextOverflow.ellipsis, style: TextStyle(fontSize: 9, color: isSelected ? Colors.white70 : Colors.grey)),
-                                      ],
-                                    ),
+                                  Icon(type['icon'] as IconData, size: 18, color: isSelected ? Colors.white : AppStyles.darkBlue),
+                                  const SizedBox(width: 6),
+                                  Text(
+                                    type['name'] as String,
+                                    style: TextStyle(fontSize: 12, fontWeight: FontWeight.w600, color: isSelected ? Colors.white : AppStyles.darkBlue),
                                   ),
                                 ],
                               ),
                             ),
                           );
-                        },
+                        }).toList(),
                       ),
                       
                       const SizedBox(height: 24),
@@ -316,17 +308,8 @@ class _GameFormDialogState extends State<GameFormDialog> {
       case 'fill_blanks':
         return _buildFillBlanksConfig();
       default:
-        return Container(
-          padding: const EdgeInsets.all(16),
-          decoration: BoxDecoration(color: const Color(0xFFE8F5E9), borderRadius: BorderRadius.circular(12)),
-          child: Row(
-            children: [
-              const Icon(Icons.info, color: Color(0xFF66BB6A)),
-              const SizedBox(width: 12),
-              const Expanded(child: Text('Este tipo usa contenido predefinido o configurado en Firebase', style: TextStyle(color: Color(0xFF2E7D32)))),
-            ],
-          ),
-        );
+        // No mostrar mensaje confuso - simplemente devolver un contenedor vacío
+        return const SizedBox.shrink();
     }
   }
 

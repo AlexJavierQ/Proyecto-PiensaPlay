@@ -11,12 +11,9 @@ import 'screens/settings_screen.dart';
 import 'screens/progress_screen.dart';
 import 'screens/tutor_login_screen.dart';
 import 'screens/tutor_dashboard_screen.dart';
-import 'screens/manage_glossary_screen.dart';
-import 'screens/add_glossary_term_screen.dart';
 import 'screens/game_units_screen.dart';
 import 'screens/game_detail_screen.dart';
 import 'screens/game_play_screen.dart';
-import 'screens/manage_games_screen.dart';
 import 'screens/create_game_unit_screen.dart';
 import 'screens/game_activities_map_screen.dart';
 import 'screens/activity_completion_screen.dart';
@@ -67,8 +64,8 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
     await Firebase.initializeApp(
       options: DefaultFirebaseOptions.currentPlatform,
     );
-    // Initialize demo data if needed
-    await FirebaseService.initializeDemoData();
+    // Inicialización de datos demo movida a Ajustes -> Zona de Desarrollo
+    // para evitar reinicios accidentales.
   }
 
   @override
@@ -169,12 +166,6 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
           case '/tutor_dashboard':
             builder = const TutorDashboardScreen();
             break;
-          case '/manage_glossary':
-            builder = const ManageGlossaryScreen();
-            break;
-          case '/add_glossary_term':
-            builder = const AddGlossaryTermScreen();
-            break;
           case '/game_units':
             builder = const GameUnitsScreen();
             break;
@@ -186,9 +177,6 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
             break;
           case '/game_play':
             builder = const GamePlayScreen();
-            break;
-          case '/manage_games':
-            builder = const ManageGamesScreen();
             break;
           case '/create_game_unit':
             builder = const CreateGameUnitScreen();
@@ -246,6 +234,8 @@ class _PiensaPlayAppState extends State<PiensaPlayApp> {
           case '/create_class':
             builder = CreateClassScreen(
               tutorId: args['tutorId'] ?? 'demo_tutor',
+              classId: args['classId'],
+              classData: args['classData'],
             );
             break;
           case '/join_class':

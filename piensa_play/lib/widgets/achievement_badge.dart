@@ -25,91 +25,98 @@ class AchievementBadge extends StatelessWidget {
   @override
   Widget build(BuildContext context) {
     return Container(
-      padding: const EdgeInsets.all(16),
+      padding: const EdgeInsets.symmetric(horizontal: 8, vertical: 10), // Padding reducido
       decoration: BoxDecoration(
-        color: isUnlocked ? Colors.white : Colors.grey.shade100,
-        borderRadius: BorderRadius.circular(20),
+        color: isUnlocked ? Colors.white : Colors.grey.shade50,
+        borderRadius: BorderRadius.circular(16),
         border: Border.all(
-          color: isUnlocked ? color : Colors.grey.shade300,
+          color: isUnlocked ? color.withOpacity(0.5) : Colors.grey.shade300,
           width: 2,
         ),
         boxShadow: isUnlocked
-            ? [BoxShadow(color: color.withOpacity(0.3), blurRadius: 12, offset: const Offset(0, 6))]
+            ? [BoxShadow(color: color.withOpacity(0.2), blurRadius: 8, offset: const Offset(0, 4))]
             : null,
       ),
       child: Column(
         mainAxisSize: MainAxisSize.min,
+        mainAxisAlignment: MainAxisAlignment.center,
         children: [
-          // Badge Icon
+          // Badge Icon - Reducido a 50px
           Container(
-            width: 70,
-            height: 70,
+            width: 48,
+            height: 48,
             decoration: BoxDecoration(
               color: isUnlocked ? color : Colors.grey.shade300,
               shape: BoxShape.circle,
               boxShadow: isUnlocked
-                  ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 8, offset: const Offset(0, 4))]
+                  ? [BoxShadow(color: color.withOpacity(0.4), blurRadius: 6, offset: const Offset(0, 3))]
                   : null,
             ),
             child: Stack(
               alignment: Alignment.center,
               children: [
-                Icon(icon, color: Colors.white, size: 35),
+                Icon(icon, color: Colors.white, size: 24),
                 if (!isUnlocked)
                   Container(
-                    width: 70,
-                    height: 70,
+                    width: 48,
+                    height: 48,
                     decoration: BoxDecoration(
-                      color: Colors.black.withOpacity(0.4),
+                      color: Colors.black.withOpacity(0.35),
                       shape: BoxShape.circle,
                     ),
-                    child: const Icon(Icons.lock, color: Colors.white, size: 24),
+                    child: const Icon(Icons.lock, color: Colors.white70, size: 20),
                   ),
               ],
             ),
           ),
-          const SizedBox(height: 12),
+          const SizedBox(height: 8), // Espacio reducido
           
           // Title
           Text(
             title,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 14,
-              fontWeight: FontWeight.bold,
-              color: isUnlocked ? AppStyles.darkBlue : Colors.grey,
+              fontSize: 12, // Letra un poco más pequeña
+              fontWeight: FontWeight.w800,
+              height: 1.1,
+              color: isUnlocked ? AppStyles.darkBlue : Colors.grey[600],
             ),
           ),
-          const SizedBox(height: 4),
+          const SizedBox(height: 2),
           
           // Description
           Text(
             description,
             textAlign: TextAlign.center,
+            maxLines: 2,
+            overflow: TextOverflow.ellipsis,
             style: TextStyle(
-              fontSize: 11,
+              fontSize: 10,
+              height: 1.1,
               color: isUnlocked ? Colors.grey.shade600 : Colors.grey.shade400,
             ),
           ),
           
           // Progress indicator (if not unlocked)
           if (!isUnlocked && progress != null && total != null) ...[
-            const SizedBox(height: 8),
+            const SizedBox(height: 6), // Espacio reducido
             Column(
               children: [
                 ClipRRect(
                   borderRadius: BorderRadius.circular(10),
                   child: LinearProgressIndicator(
-                    value: progress! / total!,
+                    value: (progress! / total!).clamp(0.0, 1.0),
                     backgroundColor: Colors.grey.shade300,
                     valueColor: AlwaysStoppedAnimation<Color>(color.withOpacity(0.6)),
-                    minHeight: 6,
+                    minHeight: 4,
                   ),
                 ),
-                const SizedBox(height: 4),
+                const SizedBox(height: 2),
                 Text(
                   '$progress/$total',
-                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500),
+                  style: TextStyle(fontSize: 10, color: Colors.grey.shade500, fontWeight: FontWeight.bold),
                 ),
               ],
             ),
@@ -138,9 +145,9 @@ class AchievementsGrid extends StatelessWidget {
       physics: const NeverScrollableScrollPhysics(),
       gridDelegate: SliverGridDelegateWithFixedCrossAxisCount(
         crossAxisCount: crossAxisCount,
-        crossAxisSpacing: 12,
-        mainAxisSpacing: 12,
-        childAspectRatio: 0.85,
+        crossAxisSpacing: 10,
+        mainAxisSpacing: 10,
+        childAspectRatio: 0.68, // Ajuste final de ratio
       ),
       itemCount: achievements.length,
       itemBuilder: (context, index) {

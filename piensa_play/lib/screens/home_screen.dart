@@ -445,11 +445,18 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
   Widget _buildAnimatedGrid() {
     final menuItems = [
       _MenuItem(
-        title: 'Juegos',
-        subtitle: '¡A jugar!',
-        icon: Icons.videogame_asset_rounded,
+        title: 'Explorar',
+        subtitle: 'Juegos libres',
+        icon: Icons.explore_rounded,
         color: const Color(0xFFBDD87B),
         route: '/game_units',
+      ),
+      _MenuItem(
+        title: 'Mis Clases',
+        subtitle: 'Cursos asignados',
+        icon: Icons.school_rounded,
+        color: const Color(0xFFA78BFA),
+        route: '/student_classes',
       ),
       _MenuItem(
         title: 'Glosario',
@@ -478,13 +485,6 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
         icon: Icons.settings_rounded,
         color: const Color(0xFF93C5FD),
         route: '/settings',
-      ),
-      _MenuItem(
-        title: 'Mis Clases',
-        subtitle: 'Únete y aprende',
-        icon: Icons.school_rounded,
-        color: const Color(0xFFA78BFA),
-        route: '/student_classes',
       ),
     ];
     
@@ -521,7 +521,22 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
 
   Widget _buildMenuCard(BuildContext context, _MenuItem item) {
     return GestureDetector(
-      onTap: () => Navigator.pushNamed(context, item.route),
+      onTap: () {
+        // Pasar argumentos necesarios según la ruta
+        Map<String, dynamic>? args;
+        if (item.route == '/student_classes') {
+          args = {'userId': widget.userId, 'userName': widget.userName};
+        } else if (item.route == '/rewards_shop') {
+          args = {'userId': widget.userId};
+        } else if (item.route == '/settings' || item.route == '/progress') {
+          args = {
+            'userId': widget.userId,
+            'userName': widget.userName,
+            'avatarIndex': widget.avatarIndex,
+          };
+        }
+        Navigator.pushNamed(context, item.route, arguments: args);
+      },
       child: Container(
         padding: const EdgeInsets.all(16),
         decoration: BoxDecoration(

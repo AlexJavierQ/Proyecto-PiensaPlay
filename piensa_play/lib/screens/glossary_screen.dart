@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
 import '../widgets/custom_bottom_nav.dart';
 import '../widgets/piensa_app_bar.dart';
@@ -41,9 +42,10 @@ class _GlossaryScreenState extends State<GlossaryScreen> {
   List<DocumentSnapshot> _filterTerms(List<DocumentSnapshot> docs) {
     return docs.where((doc) {
       final data = doc.data() as Map<String, dynamic>;
-      final title = (data['title'] ?? '').toString().toLowerCase();
-      bool matchesSearch = _searchQuery.isEmpty || title.contains(_searchQuery.toLowerCase());
-      bool matchesFilter = _selectedFilter == 'Todos' || title.startsWith(_selectedFilter.toLowerCase());
+      // CORRECCIÓN: Usar 'term' prioritariamente, fallback a 'title'
+      final term = (data['term'] ?? data['title'] ?? '').toString().toLowerCase();
+      bool matchesSearch = _searchQuery.isEmpty || term.contains(_searchQuery.toLowerCase());
+      bool matchesFilter = _selectedFilter == 'Todos' || term.startsWith(_selectedFilter.toLowerCase());
       return matchesSearch && matchesFilter;
     }).toList();
   }
@@ -52,8 +54,8 @@ class _GlossaryScreenState extends State<GlossaryScreen> {
     final letters = <String>{};
     for (var doc in docs) {
       final data = doc.data() as Map<String, dynamic>;
-      final title = (data['title'] ?? '').toString();
-      if (title.isNotEmpty) letters.add(title[0].toUpperCase());
+      final term = (data['term'] ?? data['title'] ?? '').toString();
+      if (term.isNotEmpty) letters.add(term[0].toUpperCase());
     }
     return letters;
   }
@@ -115,14 +117,20 @@ class _GlossaryScreenState extends State<GlossaryScreen> {
                 final filteredDocs = _filterTerms(snapshot.data!.docs);
                 return GridView.builder(
                   padding: const EdgeInsets.all(16),
-                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(crossAxisCount: 2, childAspectRatio: 1, crossAxisSpacing: 16, mainAxisSpacing: 16),
+                  gridDelegate: const SliverGridDelegateWithFixedCrossAxisCount(
+                    crossAxisCount: 2, 
+                    childAspectRatio: 0.8, // Ajustado para el nuevo diseño más alto
+                    crossAxisSpacing: 16, 
+                    mainAxisSpacing: 16
+                  ),
                   itemCount: filteredDocs.length,
                   itemBuilder: (context, index) {
                     final data = filteredDocs[index].data() as Map<String, dynamic>;
                     return _GlossaryCard(
                       icon: _getIcon(data['icon'] ?? 'menu_book'),
-                      title: data['title'] ?? 'Sin título',
+                      title: data['term'] ?? data['title'] ?? 'Sin término', // Usar 'term'
                       definition: data['definition'] ?? '',
+                      category: data['category'] ?? 'General', // Pasar categoría
                     );
                   },
                 );
@@ -163,34 +171,156 @@ class _GlossaryCard extends StatelessWidget {
   final IconData icon;
   final String title;
   final String definition;
-  const _GlossaryCard({required this.icon, required this.title, required this.definition});
+  final String category; // Propiedad nueva
+
+  const _GlossaryCard({
+    required this.icon,
+    required this.title,
+    required this.definition,
+    this.category = 'General',
+  });
+
+  Color _getCategoryColor(String category) {
+    switch (category.toLowerCase()) {
+      case 'medios': return const Color(0xFF42A5F5); // Blue
+      case 'seguridad': return const Color(0xFFEF5350); // Red
+      case 'privacidad': return const Color(0xFFAB47BC); // Purple
+      case 'social': return const Color(0xFFFFA726); // Orange
+      case 'tecnología': return const Color(0xFF26A69A); // Teal
+      default: return AppStyles.primaryBlue;
+    }
+  }
 
   @override
   Widget build(BuildContext context) {
+    final themeColor = _getCategoryColor(category);
+
     return GestureDetector(
-      onTap: () => _showDefinition(context),
+      onTap: () => _showDefinition(context, themeColor),
       child: Container(
-        padding: const EdgeInsets.all(12),
-        decoration: BoxDecoration(color: Colors.white, borderRadius: BorderRadius.circular(16), border: Border.all(color: const Color(0xFFA0E69D), width: 2)),
+        padding: const EdgeInsets.all(16),
+        decoration: BoxDecoration(
+          color: Colors.white,
+          borderRadius: BorderRadius.circular(20),
+          boxShadow: [
+            BoxShadow(
+              color: themeColor.withValues(alpha: 0.15),
+              blurRadius: 12,
+              offset: const Offset(0, 6),
+            ),
+          ],
+          border: Border.all(color: Colors.grey.shade100),
+        ),
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            Icon(icon, size: 40, color: const Color(0xFF132757)),
+            Container(
+              padding: const EdgeInsets.all(12),
+              decoration: BoxDecoration(
+                color: themeColor.withValues(alpha: 0.1),
+                shape: BoxShape.circle,
+              ),
+              child: Icon(icon, size: 32, color: themeColor),
+            ),
+            const SizedBox(height: 12),
+            Text(
+              title,
+              textAlign: TextAlign.center,
+              maxLines: 2,
+              overflow: TextOverflow.ellipsis,
+              style: const TextStyle(
+                fontWeight: FontWeight.w800,
+                fontSize: 15,
+                color: Color(0xFF132757),
+                height: 1.1,
+              ),
+            ),
             const SizedBox(height: 8),
-            Text(title, textAlign: TextAlign.center, style: const TextStyle(fontWeight: FontWeight.bold, fontSize: 14, color: Color(0xFF132757))),
+            Container(
+              padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+              decoration: BoxDecoration(
+                color: Colors.grey.shade100,
+                borderRadius: BorderRadius.circular(10),
+              ),
+              child: Text(
+                category.toUpperCase(),
+                style: TextStyle(
+                  fontSize: 10,
+                  fontWeight: FontWeight.bold,
+                  color: Colors.grey.shade600,
+                  letterSpacing: 0.5,
+                ),
+              ),
+            ),
           ],
         ),
       ),
     );
   }
 
-  void _showDefinition(BuildContext context) {
+  void _showDefinition(BuildContext context, Color color) {
     showDialog(
       context: context,
-      builder: (ctx) => AlertDialog(
-        title: Text(title, style: const TextStyle(fontWeight: FontWeight.bold)),
-        content: Text(definition),
-        actions: [TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Entendido'))],
+      builder: (ctx) => Dialog(
+        backgroundColor: Colors.transparent,
+        child: Container(
+          padding: const EdgeInsets.all(24),
+          decoration: BoxDecoration(
+            color: Colors.white,
+            borderRadius: BorderRadius.circular(24),
+          ),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Container(
+                padding: const EdgeInsets.all(16),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  shape: BoxShape.circle,
+                ),
+                child: Icon(icon, size: 40, color: color),
+              ),
+              const SizedBox(height: 16),
+              Text(
+                title,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 22, fontWeight: FontWeight.w900, color: Color(0xFF132757)),
+              ),
+               const SizedBox(height: 8),
+              Container(
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 6),
+                decoration: BoxDecoration(
+                  color: color.withValues(alpha: 0.1),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Text(
+                  category.toUpperCase(),
+                  style: TextStyle(fontSize: 11, fontWeight: FontWeight.bold, color: color),
+                ),
+              ),
+              const SizedBox(height: 24),
+              Text(
+                definition,
+                textAlign: TextAlign.center,
+                style: const TextStyle(fontSize: 16, color: Colors.black87, height: 1.5),
+              ),
+              const SizedBox(height: 32),
+              SizedBox(
+                width: double.infinity,
+                height: 50,
+                child: ElevatedButton(
+                  onPressed: () => Navigator.pop(ctx),
+                  style: ElevatedButton.styleFrom(
+                    backgroundColor: color,
+                    shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(16)),
+                    elevation: 0,
+                  ),
+                  child: const Text('Entendido', style: TextStyle(fontWeight: FontWeight.bold, fontSize: 16, color: Colors.white)),
+                ),
+              ),
+            ],
+          ),
+        ),
       ),
     );
   }

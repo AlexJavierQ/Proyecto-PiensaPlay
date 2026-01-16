@@ -1,8 +1,10 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:share_plus/share_plus.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
+import 'create_class_screen.dart';
 
 class ClassDetailScreen extends StatefulWidget {
   final String classId;
@@ -38,25 +40,25 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
 
   @override
   Widget build(BuildContext context) {
+    // Usamos Stack para que el contenido se deslice debajo del navbar si quisieramos, 
+    // pero aquí simplemente quitamos el SafeArea superior para que el header toque el borde.
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
-      body: SafeArea(
-        child: Column(
-          children: [
-            _buildHeader(),
-            _buildTabs(),
-            Expanded(
-              child: TabBarView(
-                controller: _tabController,
-                children: [
-                  _buildUnitsTab(),
-                  _buildStudentsTab(),
-                  if (widget.isTutor) _buildSettingsTab(),
-                ],
-              ),
+      body: Column(
+        children: [
+          _buildHeader(),
+          _buildTabs(),
+          Expanded(
+            child: TabBarView(
+              controller: _tabController,
+              children: [
+                _buildUnitsTab(),
+                _buildStudentsTab(),
+                if (widget.isTutor) _buildSettingsTab(),
+              ],
             ),
-          ],
-        ),
+          ),
+        ],
       ),
       floatingActionButton: widget.isTutor && _tabController.index == 0
           ? FloatingActionButton.extended(
@@ -80,16 +82,19 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
 
   Widget _buildHeader() {
     final classColor = Color(widget.classData['color'] ?? 0xFF42A5F5);
+    final topPadding = MediaQuery.of(context).padding.top;
     
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 20),
       decoration: BoxDecoration(
         gradient: LinearGradient(
+          begin: Alignment.topLeft,
+          end: Alignment.bottomRight,
           colors: [classColor, classColor.withValues(alpha: 0.8)],
         ),
         borderRadius: const BorderRadius.only(
-          bottomLeft: Radius.circular(28),
-          bottomRight: Radius.circular(28),
+          bottomLeft: Radius.circular(30),
+          bottomRight: Radius.circular(30),
         ),
         boxShadow: [
           BoxShadow(
@@ -132,8 +137,9 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                       Text(
                         widget.classData['description'],
                         style: const TextStyle(
-                          fontSize: 13,
-                          color: Colors.white70,
+                          fontSize: 14,
+                          color: Colors.white,
+                          fontWeight: FontWeight.w500,
                         ),
                         maxLines: 1,
                         overflow: TextOverflow.ellipsis,
@@ -145,16 +151,11 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
           ),
           if (widget.isTutor) ...[
             const SizedBox(height: 16),
-            // Código de la clase
             GestureDetector(
               onTap: () {
-                Clipboard.setData(ClipboardData(text: widget.classData['code'] ?? ''));
-                ScaffoldMessenger.of(context).showSnackBar(
-                  const SnackBar(
-                    content: Text('Código copiado al portapapeles'),
-                    duration: Duration(seconds: 2),
-                  ),
-                );
+                final code = widget.classData['code'] ?? '';
+                final className = widget.classData['name'] ?? 'Clase';
+                Share.share('🚀 ¡Únete a mi clase "$className" en PiensaPlay!\n\nUtiliza este código para entrar: $code\n\n¡Te espero para aprender jugando!');
               },
               child: Container(
                 padding: const EdgeInsets.symmetric(horizontal: 16, vertical: 10),
@@ -165,7 +166,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                 child: Row(
                   mainAxisSize: MainAxisSize.min,
                   children: [
-                    const Icon(Icons.key_rounded, color: Colors.white, size: 18),
+                    const Icon(Icons.share_rounded, color: Colors.white, size: 18),
                     const SizedBox(width: 8),
                     Text(
                       'Código: ${widget.classData['code'] ?? '------'}',
@@ -176,7 +177,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                       ),
                     ),
                     const SizedBox(width: 8),
-                    const Icon(Icons.copy_rounded, color: Colors.white70, size: 16),
+                    const Icon(Icons.send_rounded, color: Colors.white70, size: 16),
                   ],
                 ),
               ),
@@ -209,37 +210,38 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
         ),
         labelColor: Colors.white,
         unselectedLabelColor: Colors.grey[600],
-        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 13),
+        labelStyle: const TextStyle(fontWeight: FontWeight.w700, fontSize: 12),
+        labelPadding: const EdgeInsets.symmetric(horizontal: 4),
         dividerColor: Colors.transparent,
         tabs: [
           const Tab(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.games_rounded, size: 18),
-                SizedBox(width: 6),
-                Text('Unidades'),
+                Icon(Icons.games_rounded, size: 16),
+                SizedBox(width: 4),
+                Flexible(child: Text('Unidades', overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),
           const Tab(
             child: Row(
-              mainAxisAlignment: MainAxisAlignment.center,
+              mainAxisSize: MainAxisSize.min,
               children: [
-                Icon(Icons.people_rounded, size: 18),
-                SizedBox(width: 6),
-                Text('Estudiantes'),
+                Icon(Icons.people_rounded, size: 16),
+                SizedBox(width: 4),
+                Flexible(child: Text('Alumnos', overflow: TextOverflow.ellipsis)),
               ],
             ),
           ),
           if (widget.isTutor)
             const Tab(
               child: Row(
-                mainAxisAlignment: MainAxisAlignment.center,
+                mainAxisSize: MainAxisSize.min,
                 children: [
-                  Icon(Icons.settings_rounded, size: 18),
-                  SizedBox(width: 6),
-                  Text('Ajustes'),
+                  Icon(Icons.settings_rounded, size: 16),
+                  SizedBox(width: 4),
+                  Flexible(child: Text('Ajustes', overflow: TextOverflow.ellipsis)),
                 ],
               ),
             ),
@@ -250,7 +252,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
 
   Widget _buildUnitsTab() {
     return StreamBuilder<QuerySnapshot>(
-      stream: FirebaseService.getClassUnits(widget.classId),
+      stream: FirebaseService.getClassGameUnits(widget.classId),
       builder: (context, snapshot) {
         if (snapshot.connectionState == ConnectionState.waiting) {
           return const Center(child: CircularProgressIndicator());
@@ -291,7 +293,16 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
           itemBuilder: (context, index) {
             final unit = units[index];
             final data = unit.data() as Map<String, dynamic>;
-            final color = Color(data['color'] ?? 0xFFFBBF24);
+            int colorValue = 0xFFFBBF24;
+            if (data['color'] != null) {
+              if (data['color'] is int) {
+                colorValue = data['color'];
+              } else if (data['color'] is String) {
+                final colorStr = (data['color'] as String).replaceFirst('#', '');
+                colorValue = int.tryParse('0xFF$colorStr') ?? 0xFFFBBF24;
+              }
+            }
+            final color = Color(colorValue);
 
             return GestureDetector(
               onTap: () {
@@ -305,58 +316,91 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
                 );
               },
               child: Container(
-                margin: const EdgeInsets.only(bottom: 12),
-                padding: const EdgeInsets.all(16),
+                margin: const EdgeInsets.only(bottom: 16),
                 decoration: BoxDecoration(
                   color: Colors.white,
-                  borderRadius: BorderRadius.circular(16),
+                  borderRadius: BorderRadius.circular(24),
                   boxShadow: [
                     BoxShadow(
-                      color: Colors.black.withValues(alpha: 0.05),
-                      blurRadius: 10,
-                      offset: const Offset(0, 4),
+                      color: color.withValues(alpha: 0.15),
+                      blurRadius: 15,
+                      offset: const Offset(0, 8),
                     ),
                   ],
+                  border: Border.all(color: Colors.white, width: 2),
                 ),
-                child: Row(
-                  children: [
-                    Container(
-                      width: 50,
-                      height: 50,
-                      decoration: BoxDecoration(
-                        color: color.withValues(alpha: 0.15),
-                        borderRadius: BorderRadius.circular(12),
+                child: ClipRRect(
+                  borderRadius: BorderRadius.circular(22),
+                  child: Stack(
+                    children: [
+                      // Fondo decorativo sutil
+                      Positioned(
+                        right: -20,
+                        top: -20,
+                        child: Icon(Icons.videogame_asset_rounded, size: 120, color: color.withValues(alpha: 0.05)),
                       ),
-                      child: Icon(Icons.folder_rounded, color: color, size: 28),
-                    ),
-                    const SizedBox(width: 14),
-                    Expanded(
-                      child: Column(
-                        crossAxisAlignment: CrossAxisAlignment.start,
-                        children: [
-                          Text(
-                            data['title'] ?? 'Unidad',
-                            style: const TextStyle(
-                              fontSize: 16,
-                              fontWeight: FontWeight.w700,
-                              color: Color(0xFF132757),
-                            ),
-                          ),
-                          if (data['description'] != null)
-                            Text(
-                              data['description'],
-                              style: TextStyle(
-                                fontSize: 13,
-                                color: Colors.grey[500],
+                      Padding(
+                        padding: const EdgeInsets.all(20),
+                        child: Row(
+                          children: [
+                            // Icono grande destacado
+                            Container(
+                              width: 60,
+                              height: 60,
+                              decoration: BoxDecoration(
+                                gradient: LinearGradient(
+                                  begin: Alignment.topLeft,
+                                  end: Alignment.bottomRight,
+                                  colors: [color, color.withValues(alpha: 0.7)],
+                                ),
+                                borderRadius: BorderRadius.circular(18),
+                                boxShadow: [BoxShadow(color: color.withValues(alpha: 0.3), blurRadius: 8, offset: const Offset(0,4))],
                               ),
-                              maxLines: 1,
-                              overflow: TextOverflow.ellipsis,
+                              child: const Icon(Icons.star_rounded, color: Colors.white, size: 32),
                             ),
-                        ],
+                            const SizedBox(width: 16),
+                            Expanded(
+                              child: Column(
+                                crossAxisAlignment: CrossAxisAlignment.start,
+                                children: [
+                                  Text(
+                                    data['title'] ?? 'Misión Nueva',
+                                    style: const TextStyle(
+                                      fontSize: 18,
+                                      fontWeight: FontWeight.w900,
+                                      color: Color(0xFF132757),
+                                      height: 1.1,
+                                    ),
+                                  ),
+                                  const SizedBox(height: 6),
+                                  if (data['description'] != null)
+                                    Text(
+                                      data['description'],
+                                      style: TextStyle(
+                                        fontSize: 14,
+                                        fontWeight: FontWeight.w500,
+                                        color: Colors.grey[700], // Más contraste
+                                      ),
+                                      maxLines: 2,
+                                      overflow: TextOverflow.ellipsis,
+                                    ),
+                                ],
+                              ),
+                            ),
+                            const SizedBox(width: 8),
+                            Container(
+                              padding: const EdgeInsets.all(8),
+                              decoration: BoxDecoration(
+                                color: const Color(0xFFF0F7FF),
+                                borderRadius: BorderRadius.circular(12),
+                              ),
+                              child: Icon(Icons.play_arrow_rounded, color: AppStyles.primaryBlue, size: 24),
+                            ),
+                          ],
+                        ),
                       ),
-                    ),
-                    Icon(Icons.chevron_right_rounded, color: Colors.grey[400]),
-                  ],
+                    ],
+                  ),
                 ),
               ),
             );
@@ -500,13 +544,12 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
           _buildSettingItem(
             icon: Icons.share_rounded,
             title: 'Compartir código',
-            subtitle: 'Envía el código a tus estudiantes',
+            subtitle: 'Envía el código por WhatsApp, Messenger, etc.',
             color: Colors.blue,
             onTap: () {
-              Clipboard.setData(ClipboardData(text: widget.classData['code'] ?? ''));
-              ScaffoldMessenger.of(context).showSnackBar(
-                const SnackBar(content: Text('Código copiado')),
-              );
+              final code = widget.classData['code'] ?? '';
+              final className = widget.classData['name'] ?? 'Clase';
+              Share.share('🚀 ¡Únete a mi clase "$className" en PiensaPlay!\n\nUtiliza este código para entrar: $code\n\n¡Te espero!');
             },
           ),
           
@@ -515,8 +558,22 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
             title: 'Editar clase',
             subtitle: 'Cambiar nombre o descripción',
             color: Colors.orange,
-            onTap: () {
-              // TODO: Implementar edición
+            onTap: () async {
+              final result = await Navigator.push(
+                context,
+                MaterialPageRoute(
+                  builder: (context) => CreateClassScreen(
+                    tutorId: widget.classData['tutorId'] ?? '',
+                    classId: widget.classId,
+                    classData: widget.classData,
+                  ),
+                ),
+              );
+              
+              if (result == true && mounted) {
+                // Podríamos recargar los datos o simplemente volver
+                Navigator.pop(context);
+              }
             },
           ),
           

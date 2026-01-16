@@ -19,7 +19,7 @@ class PiensaAppBar extends StatelessWidget implements PreferredSizeWidget {
       elevation: 0,
       centerTitle: true,
       automaticallyImplyLeading: false,
-      leading: showBackButton 
+      leading: (showBackButton && Navigator.canPop(context))
         ? Padding(
             padding: const EdgeInsets.all(8.0),
             child: CircleAvatar(

@@ -312,6 +312,50 @@ class _RewardsShopScreenState extends State<RewardsShopScreen>
   Widget build(BuildContext context) {
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
+      appBar: AppBar(
+        backgroundColor: const Color(0xFF132757),
+        elevation: 0,
+        centerTitle: true,
+        leading: IconButton(
+          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+          onPressed: () => Navigator.pop(context),
+        ),
+        title: const Text(
+          'Tienda de Premios',
+          style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white),
+        ),
+        actions: [
+          StreamBuilder<DocumentSnapshot>(
+            stream: FirebaseService.getUserStream(widget.userId),
+            builder: (context, snapshot) {
+              final userData = snapshot.data?.data() as Map<String, dynamic>? ?? {};
+              final balance = userData['points'] ?? 0;
+              return Container(
+                margin: const EdgeInsets.only(right: 16, top: 10, bottom: 10),
+                padding: const EdgeInsets.symmetric(horizontal: 12, vertical: 4),
+                decoration: BoxDecoration(
+                  color: const Color(0xFFFFC107),
+                  borderRadius: BorderRadius.circular(20),
+                ),
+                child: Row(
+                  children: [
+                    const Icon(Icons.monetization_on_rounded, color: Color(0xFF132757), size: 16),
+                    const SizedBox(width: 4),
+                    Text(
+                      '$balance',
+                      style: const TextStyle(
+                        color: Color(0xFF132757),
+                        fontWeight: FontWeight.w900,
+                        fontSize: 14,
+                      ),
+                    ),
+                  ],
+                ),
+              );
+            },
+          ),
+        ],
+      ),
       body: StreamBuilder<DocumentSnapshot>(
         stream: FirebaseService.getUserStream(widget.userId),
         builder: (context, snapshot) {
@@ -320,28 +364,23 @@ class _RewardsShopScreenState extends State<RewardsShopScreen>
           final inventory = (userData['inventory'] as List?) ?? [];
           final inventoryIds = inventory.map((e) => e['id']).toSet();
 
-          return SafeArea(
-            child: Column(
-              children: [
-                // Header premium
-                _buildHeader(userBalance),
+          return Column(
+            children: [
+              // Categorías
+              _buildCategoryTabs(),
 
-                // Categorías
-                _buildCategoryTabs(),
-
-                // Grid de items
-                Expanded(
-                  child: TabBarView(
-                    controller: _tabController,
-                    children: [
-                      _buildItemsGrid('avatar', inventoryIds, userBalance),
-                      _buildItemsGrid('frame', inventoryIds, userBalance),
-                      _buildItemsGrid('theme', inventoryIds, userBalance),
-                    ],
-                  ),
+              // Grid de items
+              Expanded(
+                child: TabBarView(
+                  controller: _tabController,
+                  children: [
+                    _buildItemsGrid('avatar', inventoryIds, userBalance),
+                    _buildItemsGrid('frame', inventoryIds, userBalance),
+                    _buildItemsGrid('theme', inventoryIds, userBalance),
+                  ],
                 ),
-              ],
-            ),
+              ),
+            ],
           );
         },
       ),

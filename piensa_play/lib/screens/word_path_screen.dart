@@ -394,18 +394,22 @@ class _WordPathScreenState extends State<WordPathScreen> {
             if (!_showResult)
               Row(
                 children: [
-                  AnswerButton(
-                    text: 'Palabra que hiere',
-                    isCorrect: false,
-                    icon: Icons.heart_broken,
-                    onPressed: () => _classifyWord(true),
+                  Expanded(
+                    child: AnswerButton(
+                      text: 'Palabra que hiere',
+                      isCorrect: false,
+                      icon: Icons.heart_broken,
+                      onPressed: () => _classifyWord(true),
+                    ),
                   ),
-                  const SizedBox(width: 16),
-                  AnswerButton(
-                    text: 'Palabra que construye',
-                    isCorrect: true,
-                    icon: Icons.favorite,
-                    onPressed: () => _classifyWord(false),
+                  const SizedBox(width: 12),
+                  Expanded(
+                    child: AnswerButton(
+                      text: 'Palabra que conecta',
+                      isCorrect: true,
+                      icon: Icons.favorite,
+                      onPressed: () => _classifyWord(false),
+                    ),
                   ),
                 ],
               )

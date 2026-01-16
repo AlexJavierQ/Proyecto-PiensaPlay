@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 import '../utils/app_styles.dart';
+import '../utils/firebase_service.dart';
 
 class TutorLoginScreen extends StatefulWidget {
   const TutorLoginScreen({super.key});
@@ -47,38 +48,63 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
     super.dispose();
   }
 
-  void _login() {
+  Future<void> _login() async {
     final user = _userController.text.trim();
     final pass = _passController.text.trim();
     
-    // Aceptar ambas contraseñas para compatibilidad
-    if (user == 'tutor' && (pass == '1234' || pass == '123456')) {
-      setState(() => _isLoading = true);
-      Future.delayed(const Duration(milliseconds: 800), () {
-        if (mounted) {
-          Navigator.pushReplacementNamed(
-            context,
-            '/tutor_dashboard',
-            arguments: {'tutorId': 'demo_tutor', 'tutorName': 'Profesor Demo'},
-          );
-        }
-      });
-    } else {
+    if (user.isEmpty || pass.isEmpty) {
       ScaffoldMessenger.of(context).showSnackBar(
-        SnackBar(
-          content: Row(
-            children: const [
-              Icon(Icons.error_outline, color: Colors.white),
-              SizedBox(width: 12),
-              Text('Credenciales incorrectas'),
-            ],
-          ),
-          backgroundColor: AppStyles.coral,
-          behavior: SnackBarBehavior.floating,
-          shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-          margin: const EdgeInsets.all(16),
+        const SnackBar(
+          content: Text('Por favor ingresa usuario y contraseña'),
+          backgroundColor: Colors.orange,
         ),
       );
+      return;
+    }
+    
+    setState(() => _isLoading = true);
+    
+    try {
+      // Buscar el tutor en Firebase
+      final tutorData = await FirebaseService.validateTutor(user, pass);
+      
+      if (tutorData != null && mounted) {
+        Navigator.pushReplacementNamed(
+          context,
+          '/tutor_dashboard',
+          arguments: {
+            'tutorId': tutorData['id'] ?? 'demo_tutor',
+            'tutorName': tutorData['name'] ?? user,
+          },
+        );
+      } else if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: const Row(
+              children: [
+                Icon(Icons.error_outline, color: Colors.white),
+                SizedBox(width: 12),
+                Text('Credenciales incorrectas'),
+              ],
+            ),
+            backgroundColor: AppStyles.coral,
+            behavior: SnackBarBehavior.floating,
+            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+            margin: const EdgeInsets.all(16),
+          ),
+        );
+      }
+    } catch (e) {
+      if (mounted) {
+        ScaffoldMessenger.of(context).showSnackBar(
+          SnackBar(
+            content: Text('Error: $e'),
+            backgroundColor: Colors.red,
+          ),
+        );
+      }
+    } finally {
+      if (mounted) setState(() => _isLoading = false);
     }
   }
 
@@ -427,7 +453,7 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
                         ),
                       ),
                       Text(
-                        'Usuario: tutor | Contraseña: 1234',
+                        'Usuario: admin | Contraseña: 123456',
                         style: TextStyle(
                           fontSize: 12,
                           color: AppStyles.textLight,

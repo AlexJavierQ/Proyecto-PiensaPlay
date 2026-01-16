@@ -56,48 +56,52 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
-      body: SafeArea(
-        child: StreamBuilder<QuerySnapshot>(
-          stream: FirebaseService.getUnitActivities(unitId),
-          builder: (context, activitySnapshot) {
-            return StreamBuilder<QuerySnapshot>(
-              stream: FirebaseService.getUserProgress(_userId!),
-              builder: (context, progressSnapshot) {
-                if (activitySnapshot.connectionState == ConnectionState.waiting) {
-                  return const Center(child: CircularProgressIndicator(color: Color(0xFF132757)));
-                }
+      body: StreamBuilder<QuerySnapshot>(
+          stream: FirebaseService.getUserProgress(_userId!),
+          builder: (context, progressSnapshot) {
+            if (progressSnapshot.connectionState == ConnectionState.waiting) {
+              return const Center(child: CircularProgressIndicator(color: Color(0xFF132757)));
+            }
 
-                final List<QueryDocumentSnapshot> activityDocs = activitySnapshot.data?.docs ?? [];
+            // Las actividades vienen directamente del campo 'games' de la unidad
+            final List<dynamic> gamesList = unitData['games'] ?? [];
+            
+            if (gamesList.isEmpty) {
+              return _buildEmptyState(context, unitData);
+            }
 
-                if (activityDocs.isEmpty) {
-                  return _buildEmptyState(context, unitData);
-                }
+            final List<QueryDocumentSnapshot> progressDocs = progressSnapshot.data?.docs ?? [];
 
-                final List<QueryDocumentSnapshot> progressDocs = progressSnapshot.data?.docs ?? [];
+            final completedIds = progressDocs
+                .where((doc) => (doc.data() as Map<String, dynamic>)['completed'] == true)
+                .map((doc) => (doc.data() as Map<String, dynamic>)['activityId'])
+                .toSet();
 
-                final completedIds = progressDocs
-                    .where((doc) => (doc.data() as Map<String, dynamic>)['completed'] == true)
-                    .map((doc) => (doc.data() as Map<String, dynamic>)['activityId'])
-                    .toSet();
+            List<Map<String, dynamic>> activities = [];
+            for (int i = 0; i < gamesList.length; i++) {
+              final data = gamesList[i] as Map<String, dynamic>;
+              // FIX: Usar ID real o generar uno único por unidad para evitar conflictos de progreso
+              final id = data['id']?.toString() ?? '${unitId}_activity_$i';
+              
+              bool isCompleted = completedIds.contains(id);
+              // Lógica de desbloqueo: La primera siempre disponible, las siguientes dependen de la anterior
+              // O si ya está completada, también está disponible (por si acaso)
+              bool isLocked = i == 0 ? false : (!activities[i - 1]['isCompleted']);
+              
+              // Si la actividad ya fue completada, obviamente no está bloqueada
+              if (isCompleted) isLocked = false;
 
-                List<Map<String, dynamic>> activities = [];
-                for (int i = 0; i < activityDocs.length; i++) {
-                  final data = activityDocs[i].data() as Map<String, dynamic>;
-                  final id = activityDocs[i].id;
-                  bool isCompleted = completedIds.contains(id);
-                  bool isLocked = i == 0 ? false : !completedIds.contains(activityDocs[i - 1].id);
+              activities.add({
+                ...data,
+                'id': id,
+                'isCompleted': isCompleted,
+                'status': isLocked ? 'locked' : 'available',
+              });
+            }
 
-                  activities.add({
-                    ...data,
-                    'id': id,
-                    'isCompleted': isCompleted,
-                    'status': isLocked ? 'locked' : 'available',
-                  });
-                }
-
-                // Calcular progreso
-                final completedCount = activities.where((a) => a['isCompleted'] == true).length;
-                final progressPercent = activities.isEmpty ? 0.0 : completedCount / activities.length;
+            // Calcular progreso
+            final completedCount = activities.where((a) => a['isCompleted'] == true).length;
+            final progressPercent = activities.isEmpty ? 0.0 : completedCount / activities.length;
 
                 return Column(
                   children: [
@@ -112,6 +116,7 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
                         itemCount: activities.length,
                         itemBuilder: (context, index) {
                           final activity = activities[index];
+                          // ... resto del builder
                           final isLast = index == activities.length - 1;
                           
                           return AnimatedBuilder(
@@ -142,11 +147,8 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
                     ),
                   ],
                 );
-              },
-            );
           },
         ),
-      ),
     );
   }
 
@@ -199,8 +201,10 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
     int completedCount,
     int totalCount,
   ) {
+    final topPadding = MediaQuery.of(context).padding.top;
+
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 30),
       decoration: BoxDecoration(
         color: const Color(0xFF132757),
         borderRadius: const BorderRadius.only(
@@ -221,7 +225,15 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
           Row(
             children: [
               GestureDetector(
-                onTap: () => Navigator.pop(context),
+                onTap: () {
+                  // Usar canPop para verificar si hay historial
+                  if (Navigator.canPop(context)) {
+                    Navigator.pop(context);
+                  } else {
+                    // Fallback seguro al Home si el historial se perdió
+                    Navigator.pushNamedAndRemoveUntil(context, '/home', (r) => false);
+                  }
+                },
                 child: Container(
                   padding: const EdgeInsets.all(10),
                   decoration: BoxDecoration(

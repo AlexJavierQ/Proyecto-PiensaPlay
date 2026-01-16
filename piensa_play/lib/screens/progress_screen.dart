@@ -1,10 +1,11 @@
 import 'package:flutter/material.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
 import '../widgets/custom_bottom_nav.dart';
 import '../widgets/widgets.dart';
 
-class ProgressScreen extends StatelessWidget {
+class ProgressScreen extends StatefulWidget {
   final String userId;
   final String userName;
   final int avatarIndex;
@@ -17,23 +18,33 @@ class ProgressScreen extends StatelessWidget {
   });
 
   @override
+  State<ProgressScreen> createState() => _ProgressScreenState();
+}
+
+class _ProgressScreenState extends State<ProgressScreen> {
+  bool _showAllBadges = false;
+  bool _showAllHistory = false;
+
+  @override
   Widget build(BuildContext context) {
     // EXTRAER ARGUMENTOS CON LLAVES NORMALIZADAS
     final args = ModalRoute.of(context)?.settings.arguments as Map<String, dynamic>?;
     
     // Prioridad: 1. Argumentos de navegación, 2. Persistencia local (si existiera), 3. Valor del constructor
-    final String displayUserId = args?['userId'] ?? userId;
-    final String displayUserName = args?['userName'] ?? userName;
+    final String displayUserId = args?['userId'] ?? widget.userId;
+    final String displayUserName = args?['userName'] ?? widget.userName;
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
       appBar: AppBar(
         backgroundColor: const Color(0xFF132757),
         elevation: 0,
-        leading: IconButton(
-          icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
-          onPressed: () => Navigator.pop(context),
-        ),
+        leading: Navigator.canPop(context)
+            ? IconButton(
+                icon: const Icon(Icons.arrow_back_ios_new_rounded, color: Colors.white, size: 20),
+                onPressed: () => Navigator.pop(context),
+              )
+            : null,
         title: const Text('Mi Progreso', style: TextStyle(fontWeight: FontWeight.bold, color: Colors.white)),
         centerTitle: true,
       ),
@@ -61,14 +72,6 @@ class ProgressScreen extends StatelessWidget {
                 final data = doc.data() as Map<String, dynamic>;
                 totalXP += (data['score'] as num? ?? 0).toInt();
                 
-                // Intentar extraer el tipo de actividad del ID o de un campo type si existiera
-                // El ID de progreso es usually userId_unitId_activityId
-                // Podríamos necesitar guardar el tipo en el progreso para ser más precisos
-                if (data['activityId'] != null) {
-                   // Por ahora simulamos que si completó algo cuenta
-                   // En el futuro, FirebaseService.saveGameProgress debería guardar el 'type'
-                }
-                // Si guardamos el type en el progreso:
                 if (data['type'] != null) {
                   completedTypes.add(data['type']);
                 }
@@ -194,32 +197,78 @@ class ProgressScreen extends StatelessWidget {
   }
 
   Widget _buildBadgesSection(int completed, int totalPoints, Set<String> completedTypes) {
-    // Calcular logros usando la lógica centralizada
-    final achievements = PiensaPlayAchievements.getAll(
+    // Calcular logros totales
+    final allAchievements = PiensaPlayAchievements.getAll(
       completedActivities: completed,
       totalPoints: totalPoints,
       completedTypes: completedTypes,
     );
+    
+    // Ordenar: Desbloqueadas primero
+    allAchievements.sort((a, b) {
+      if (a.isUnlocked && !b.isUnlocked) return -1;
+      if (!a.isUnlocked && b.isUnlocked) return 1;
+      return 0;
+    });
+
+    // Definir cuántas y cómo mostrar
+    final displayedAchievements = _showAllBadges 
+        ? allAchievements 
+        : allAchievements.take(4).toList();
 
     return Column(
-      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Tus Insignias', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Tus Insignias', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
+            if (allAchievements.length > 4)
+              TextButton(
+                onPressed: () => setState(() => _showAllBadges = !_showAllBadges),
+                child: Text(
+                  _showAllBadges ? 'Ver menos' : 'Ver todas',
+                  style: TextStyle(color: AppStyles.primaryBlue, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 16),
-        AchievementsGrid(achievements: achievements),
+        AchievementsGrid(
+          achievements: displayedAchievements,
+          // Si está colapsado mostramos 2 columnas (para que 4 queden 2x2). Si expandido, 3.
+          crossAxisCount: _showAllBadges ? 3 : 2, 
+        ),
       ],
     );
   }
 
   Widget _buildRecentActivities(List<QueryDocumentSnapshot> docs) {
     if (docs.isEmpty) return const SizedBox.shrink();
+    
+    final displayedDocs = _showAllHistory ? docs : docs.take(3).toList();
+
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const Text('Historial de Juegos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
+        Row(
+          mainAxisAlignment: MainAxisAlignment.spaceBetween,
+          children: [
+            const Text('Historial de Juegos', style: TextStyle(fontSize: 20, fontWeight: FontWeight.w900, color: Color(0xFF132757))),
+            if (docs.length > 3)
+              TextButton(
+                onPressed: () => setState(() => _showAllHistory = !_showAllHistory),
+                child: Text(
+                  _showAllHistory ? 'Ver menos' : 'Ver más',
+                  style: TextStyle(color: AppStyles.primaryBlue, fontWeight: FontWeight.bold),
+                ),
+              ),
+          ],
+        ),
         const SizedBox(height: 16),
-        ...docs.take(5).map((doc) {
+        ...displayedDocs.map((doc) {
           final data = doc.data() as Map<String, dynamic>;
+          final timestamp = (data['timestamp'] as Timestamp?)?.toDate();
+          
           return Container(
             margin: const EdgeInsets.only(bottom: 12),
             padding: const EdgeInsets.all(16),
@@ -228,7 +277,19 @@ class ProgressScreen extends StatelessWidget {
               children: [
                 const Icon(Icons.check_circle_rounded, color: Color(0xFFA0E69D)),
                 const SizedBox(width: 16),
-                const Expanded(child: Text('Misión Completada', style: TextStyle(fontWeight: FontWeight.bold))),
+                Expanded(
+                  child: Column(
+                    crossAxisAlignment: CrossAxisAlignment.start,
+                    children: [
+                      const Text('Misión Completada', style: TextStyle(fontWeight: FontWeight.bold)),
+                      if (timestamp != null)
+                        Text(
+                          '${timestamp.day}/${timestamp.month}/${timestamp.year}',
+                          style: TextStyle(fontSize: 10, color: Colors.grey.shade400),
+                        ),
+                    ],
+                  ),
+                ),
                 Text('+${data['score']} XP', style: const TextStyle(color: Color(0xFF10B981), fontWeight: FontWeight.bold)),
               ],
             ),

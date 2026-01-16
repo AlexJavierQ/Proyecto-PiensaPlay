@@ -6,8 +6,15 @@ import '../utils/firebase_service.dart';
 
 class CreateClassScreen extends StatefulWidget {
   final String tutorId;
+  final String? classId;
+  final Map<String, dynamic>? classData;
 
-  const CreateClassScreen({super.key, required this.tutorId});
+  const CreateClassScreen({
+    super.key,
+    required this.tutorId,
+    this.classId,
+    this.classData,
+  });
 
   @override
   State<CreateClassScreen> createState() => _CreateClassScreenState();
@@ -18,12 +25,20 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
   final _nameController = TextEditingController();
   final _descriptionController = TextEditingController();
   bool _isLoading = false;
+  bool _isEditing = false;
   String? _generatedCode;
 
   @override
   void initState() {
     super.initState();
-    _generateCode();
+    if (widget.classId != null && widget.classData != null) {
+      _isEditing = true;
+      _nameController.text = widget.classData!['name'] ?? '';
+      _descriptionController.text = widget.classData!['description'] ?? '';
+      _generatedCode = widget.classData!['code'];
+    } else {
+      _generateCode();
+    }
   }
 
   void _generateCode() {
@@ -45,35 +60,41 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
     setState(() => _isLoading = true);
 
     try {
-      await FirebaseService.createClass({
+      final data = {
         'name': _nameController.text.trim(),
         'description': _descriptionController.text.trim(),
         'code': _generatedCode,
         'tutorId': widget.tutorId,
-        'createdAt': FieldValue.serverTimestamp(),
-        'studentCount': 0,
-      });
+        'updatedAt': FieldValue.serverTimestamp(),
+      };
 
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Row(
-              children: [
-                const Icon(Icons.check_circle, color: Colors.white),
-                const SizedBox(width: 8),
-                Text('¡Clase "$_generatedCode" creada exitosamente!'),
-              ],
+      if (_isEditing) {
+        await FirebaseService.updateClass(widget.classId!, data);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            const SnackBar(content: Text('Clase actualizada correctamente'), backgroundColor: AppStyles.accentGreen),
+          );
+          Navigator.pop(context, true);
+        }
+      } else {
+        data['createdAt'] = FieldValue.serverTimestamp();
+        data['studentCount'] = 0;
+        await FirebaseService.createClass(data);
+        if (mounted) {
+          ScaffoldMessenger.of(context).showSnackBar(
+            SnackBar(
+              content: Text('¡Clase "$_generatedCode" creada exitosamente!'),
+              backgroundColor: AppStyles.accentGreen,
             ),
-            backgroundColor: AppStyles.accentGreen,
-          ),
-        );
-        Navigator.pop(context, true);
+          );
+          Navigator.pop(context, true);
+        }
       }
     } catch (e) {
       if (mounted) {
         ScaffoldMessenger.of(context).showSnackBar(
           SnackBar(
-            content: Text('Error al crear clase: $e'),
+            content: Text('Error: $e'),
             backgroundColor: Colors.red,
           ),
         );
@@ -199,14 +220,14 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
                                     strokeWidth: 2,
                                   ),
                                 )
-                              : const Row(
+                              : Row(
                                   mainAxisAlignment: MainAxisAlignment.center,
                                   children: [
-                                    Icon(Icons.add_circle, color: Colors.white),
-                                    SizedBox(width: 8),
+                                    Icon(_isEditing ? Icons.save_rounded : Icons.add_circle, color: Colors.white),
+                                    const SizedBox(width: 8),
                                     Text(
-                                      'CREAR CLASE',
-                                      style: TextStyle(
+                                      _isEditing ? 'GUARDAR CAMBIOS' : 'CREAR CLASE',
+                                      style: const TextStyle(
                                         fontSize: 16,
                                         fontWeight: FontWeight.w800,
                                         color: Colors.white,
@@ -262,20 +283,20 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
           const SizedBox(width: 16),
           const Icon(Icons.school_rounded, color: AppStyles.yellow, size: 28),
           const SizedBox(width: 12),
-          const Column(
+          Column(
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
               Text(
-                'Nueva Clase',
-                style: TextStyle(
+                _isEditing ? 'Editar Clase' : 'Nueva Clase',
+                style: const TextStyle(
                   fontSize: 22,
                   fontWeight: FontWeight.w800,
                   color: Colors.white,
                 ),
               ),
               Text(
-                'Crea una clase para tus estudiantes',
-                style: TextStyle(
+                _isEditing ? 'Actualiza los detalles de tu clase' : 'Crea una clase para tus estudiantes',
+                style: const TextStyle(
                   fontSize: 13,
                   color: Colors.white70,
                 ),
@@ -340,10 +361,10 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
             ),
           ),
           IconButton(
-            onPressed: () {
+            onPressed: _isEditing ? null : () {
               setState(() => _generateCode());
             },
-            icon: const Icon(Icons.refresh_rounded, color: Color(0xFF132757)),
+            icon: Icon(Icons.refresh_rounded, color: _isEditing ? Colors.grey : const Color(0xFF132757)),
             tooltip: 'Generar nuevo código',
           ),
         ],
