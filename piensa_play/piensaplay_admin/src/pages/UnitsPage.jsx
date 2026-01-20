@@ -46,7 +46,8 @@ const UnitsPage = () => {
         icon: 'games',
         color: 0xFF42A5F5,
         media: { image: null, audio: null, video: null },
-        questions: []
+        questions: [],
+        instructions: ''
     });
 
     // Upload State
@@ -250,7 +251,8 @@ const UnitsPage = () => {
                 icon: activity.icon || 'games',
                 color: activity.color || 0xFF42A5F5,
                 media: activity.media || { image: null, audio: null, video: null },
-                questions: activity.questions || []
+                questions: activity.questions || [],
+                instructions: activity.instructions || ''
             });
         } else {
             setEditingActivity(null);
@@ -261,7 +263,8 @@ const UnitsPage = () => {
                 icon: 'games',
                 color: 0xFF42A5F5,
                 media: { image: null, audio: null, video: null },
-                questions: []
+                questions: [],
+                instructions: ''
             });
         }
         setShowActivityModal(true);
@@ -642,6 +645,16 @@ const UnitsPage = () => {
                                                 onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
                                                 required
                                                 placeholder="Ej: Quiz sobre planetas"
+                                            />
+                                        </div>
+
+                                        <div className="form-group">
+                                            <label>Instrucciones de la Actividad</label>
+                                            <textarea
+                                                value={activityForm.instructions}
+                                                onChange={(e) => setActivityForm({ ...activityForm, instructions: e.target.value })}
+                                                placeholder="Escribe aquí las instrucciones detalladas para el estudiante..."
+                                                rows={3}
                                             />
                                         </div>
 
