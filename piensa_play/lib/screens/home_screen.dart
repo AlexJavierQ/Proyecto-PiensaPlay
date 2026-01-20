@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
@@ -176,17 +177,60 @@ class _HomeScreenState extends State<HomeScreen> with TickerProviderStateMixin {
     
     final name = widget.userName.split('#').first;
     
-    return Row(
+    return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        Icon(icon, color: AppStyles.yellow, size: 24),
-        const SizedBox(width: 8),
-        Expanded(
-          child: Text(
-            '$greeting, $name! 👋',
-            style: const TextStyle(
-              fontSize: 16,
-              fontWeight: FontWeight.w600,
-              color: AppStyles.slateText,
+        Row(
+          children: [
+            Icon(icon, color: AppStyles.yellow, size: 24),
+            const SizedBox(width: 8),
+            Expanded(
+              child: Text(
+                '$greeting, $name! 👋',
+                style: const TextStyle(
+                  fontSize: 16,
+                  fontWeight: FontWeight.w600,
+                  color: AppStyles.slateText,
+                ),
+              ),
+            ),
+          ],
+        ),
+        const SizedBox(height: 8),
+        GestureDetector(
+          onTap: () {
+            Clipboard.setData(ClipboardData(text: widget.userName));
+            ScaffoldMessenger.of(context).showSnackBar(
+              const SnackBar(
+                content: Text('Tag copiado al portapapeles!'),
+                duration: Duration(seconds: 2),
+                backgroundColor: AppStyles.primaryBlue,
+              ),
+            );
+          },
+          child: Container(
+            padding: const EdgeInsets.symmetric(horizontal: 10, vertical: 4),
+            decoration: BoxDecoration(
+              color: Colors.white,
+              borderRadius: BorderRadius.circular(15),
+              border: Border.all(color: AppStyles.primaryBlue.withValues(alpha: 0.2)),
+            ),
+            child: Row(
+              mainAxisSize: MainAxisSize.min,
+              children: [
+                Icon(Icons.badge_outlined, size: 14, color: AppStyles.primaryBlue.withValues(alpha: 0.7)),
+                const SizedBox(width: 6),
+                Text(
+                  widget.userName,
+                  style: TextStyle(
+                    fontSize: 12,
+                    color: AppStyles.primaryBlue.withValues(alpha: 0.8),
+                    fontWeight: FontWeight.w600,
+                  ),
+                ),
+                const SizedBox(width: 6),
+                const Icon(Icons.copy_rounded, size: 12, color: AppStyles.primaryBlue),
+              ],
             ),
           ),
         ),

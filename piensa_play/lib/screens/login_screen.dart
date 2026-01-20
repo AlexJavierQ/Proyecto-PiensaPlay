@@ -203,6 +203,7 @@ class _LoginScreenState extends State<LoginScreen> {
     required String hintText,
     required IconData icon,
     bool isNumber = false,
+    bool isObscure = false, 
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -211,6 +212,7 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: TextField(
         controller: controller,
+        obscureText: isObscure,
         keyboardType: isNumber ? TextInputType.number : TextInputType.text,
         textAlign: TextAlign.center,
         style: const TextStyle(fontWeight: FontWeight.w600, color: AppStyles.primaryBlue),
@@ -264,7 +266,12 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Widget _buildTagLoginCard() {
+  // State for login mode
+  bool _isEmailLogin = false;
+  final TextEditingController _emailController = TextEditingController();
+  final TextEditingController _passwordController = TextEditingController();
+
+  Widget _buildUnifiedLoginCard() {
     return Container(
       padding: const EdgeInsets.all(24.0),
       decoration: BoxDecoration(
@@ -281,18 +288,86 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
       child: Column(
         children: [
-          _buildTextField(
-            controller: _tagController,
-            hintText: 'Ingresa tu tag (ej: 123456)',
-            icon: Icons.tag,
-            isNumber: true,
+          // Toggle Switch
+          Container(
+            padding: const EdgeInsets.all(4),
+            decoration: BoxDecoration(
+              color: Colors.grey[100],
+              borderRadius: BorderRadius.circular(20),
+            ),
+            child: Row(
+              children: [
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isEmailLogin = false),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: !_isEmailLogin ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: !_isEmailLogin ? [BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Usar Tag',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+                Expanded(
+                  child: GestureDetector(
+                    onTap: () => setState(() => _isEmailLogin = true),
+                    child: Container(
+                      padding: const EdgeInsets.symmetric(vertical: 10),
+                      decoration: BoxDecoration(
+                        color: _isEmailLogin ? Colors.white : Colors.transparent,
+                        borderRadius: BorderRadius.circular(16),
+                        boxShadow: _isEmailLogin ? [BoxShadow(color: Colors.black12, blurRadius: 4)] : [],
+                      ),
+                      child: const Center(
+                        child: Text(
+                          'Usar Correo',
+                          style: TextStyle(fontWeight: FontWeight.bold, fontSize: 13),
+                        ),
+                      ),
+                    ),
+                  ),
+                ),
+              ],
+            ),
           ),
+          const SizedBox(height: 20),
+          
+          if (!_isEmailLogin) ...[
+            _buildTextField(
+              controller: _tagController,
+              hintText: 'Usuario (ej: pablo#123456)',
+              icon: Icons.badge_rounded,
+              isNumber: false,
+            ),
+          ] else ...[
+            _buildTextField(
+              controller: _emailController,
+              hintText: 'Correo Electrónico',
+              icon: Icons.email_outlined,
+            ),
+            const SizedBox(height: 16),
+            _buildTextField(
+              controller: _passwordController,
+              hintText: 'Contraseña',
+              icon: Icons.lock_outline,
+              isObscure: true, // Use custom property or modify _buildTextField
+            ),
+          ],
+          
           const SizedBox(height: 16),
           SizedBox(
             width: double.infinity,
             height: 50,
             child: ElevatedButton(
-              onPressed: _isSaving ? null : _handleTagLogin,
+              onPressed: _isSaving ? null : (_isEmailLogin ? _handleEmailLogin : _handleTagLogin),
               style: ElevatedButton.styleFrom(
                 backgroundColor: AppStyles.primaryBlue,
                 shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(25)),
@@ -310,13 +385,14 @@ class _LoginScreenState extends State<LoginScreen> {
       ),
     );
   }
+  
 
   Widget _buildSubmitButton() {
     return SizedBox(
       width: double.infinity,
       height: 60,
       child: ElevatedButton(
-        onPressed: _isSaving ? null : _handleLogin,
+        onPressed: _isSaving ? null : _handleCreateAccount,
         style: ElevatedButton.styleFrom(
           backgroundColor: AppStyles.accentGreen,
           shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(30)),
@@ -333,6 +409,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
+  // UI Fix: Use Flexible to prevent overflow
   Widget _buildExistingUserLink() {
     return Column(
       children: [
@@ -340,14 +417,21 @@ class _LoginScreenState extends State<LoginScreen> {
           onPressed: () => setState(() => _showExistingUserForm = !_showExistingUserForm),
           child: Row(
             mainAxisAlignment: MainAxisAlignment.center,
+            mainAxisSize: MainAxisSize.min,
             children: [
-              Text(
-                '¿Ya tienes un perfil? ',
-                style: TextStyle(color: AppStyles.textLight, fontSize: 16),
+              Flexible(
+                child: Text(
+                  '¿Ya tienes un perfil? ',
+                  style: TextStyle(color: AppStyles.textLight, fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
-              Text(
-                _showExistingUserForm ? 'Ocultar' : 'Ingresa con tu tag',
-                style: TextStyle(color: AppStyles.primaryBlue, fontWeight: FontWeight.bold, fontSize: 16),
+              Flexible(
+                child: Text(
+                  _showExistingUserForm ? 'Ocultar' : 'Ingresa aquí', 
+                  style: TextStyle(color: AppStyles.primaryBlue, fontWeight: FontWeight.bold, fontSize: 16),
+                  overflow: TextOverflow.ellipsis,
+                ),
               ),
               Icon(
                 _showExistingUserForm ? Icons.expand_less : Icons.expand_more,
@@ -360,7 +444,7 @@ class _LoginScreenState extends State<LoginScreen> {
           firstChild: const SizedBox.shrink(),
           secondChild: Padding(
             padding: const EdgeInsets.only(top: 16),
-            child: _buildTagLoginCard(),
+            child: _buildUnifiedLoginCard(),
           ),
           crossFadeState: _showExistingUserForm 
               ? CrossFadeState.showSecond 
@@ -371,7 +455,7 @@ class _LoginScreenState extends State<LoginScreen> {
     );
   }
 
-  Future<void> _handleLogin() async {
+  Future<void> _handleCreateAccount() async {
     if (_nameController.text.isEmpty || _ageController.text.isEmpty) {
       _showError('Por favor, completa tus datos');
       return;
@@ -412,36 +496,95 @@ class _LoginScreenState extends State<LoginScreen> {
     }
   }
 
-  Future<void> _handleTagLogin() async {
-    if (_tagController.text.isEmpty) {
-      _showError('Por favor, ingresa tu tag');
+  Future<void> _handleEmailLogin() async {
+    if (_emailController.text.isEmpty || _passwordController.text.isEmpty) {
+      _showError('Por favor ingresa correo y contraseña');
       return;
     }
 
     setState(() => _isSaving = true);
     try {
-      final userData = await FirebaseService.getUserByTag(_tagController.text.trim());
+      final userData = await FirebaseService.loginWithEmail(
+        _emailController.text.trim(), 
+        _passwordController.text
+      );
+      
       if (userData != null) {
         final id = userData['id'];
-        final name = userData['name'];
-        final tag = userData['tag'];
+        final storedName = userData['name'];
+        final storedTag = userData['tag'];
         final avatarIndex = userData['avatarIndex'] ?? 0;
 
         await LocalStorageService.saveUserData(
           userId: id,
-          userName: '$name#$tag',
+          userName: '$storedName#$storedTag',
           userAvatar: avatarIndex.toString(),
         );
 
         if (!mounted) return;
         Navigator.pushReplacementNamed(context, '/home', arguments: {
           'userId': id,
-          'userName': '$name#$tag',
+          'userName': '$storedName#$storedTag',
           'avatarIndex': avatarIndex,
-          'userTag': tag,
+          'userTag': storedTag,
         });
       } else {
-        _showError('Tag no encontrado. Verifica e intenta de nuevo.');
+        _showError('No se encontró un perfil vinculado a este correo.');
+      }
+    } catch (e) {
+      _showError(e.toString().replaceAll('Exception: ', ''));
+    } finally {
+      if (mounted) setState(() => _isSaving = false);
+    }
+  }
+
+  Future<void> _handleTagLogin() async {
+    // ... existing logic ...
+    final input = _tagController.text.trim();
+    if (input.isEmpty) {
+      _showError('Por favor, ingresa tu usuario y tag');
+      return;
+    }
+
+    if (!input.contains('#')) {
+      _showError('Formato incorrecto. Usa Nombre#Tag (ej: pablo#123456)');
+      return;
+    }
+
+    final parts = input.split('#');
+    if (parts.length < 2 || parts[0].isEmpty || parts[1].isEmpty) {
+      _showError('Formato incorrecto. Asegúrate de incluir tu nombre y tag.');
+      return;
+    }
+
+    final name = parts[0];
+    final tag = parts[1];
+
+    setState(() => _isSaving = true);
+    try {
+      final userData = await FirebaseService.getUserByCredentials(name, tag);
+      
+      if (userData != null) {
+        final id = userData['id'];
+        final storedName = userData['name'];
+        final storedTag = userData['tag'];
+        final avatarIndex = userData['avatarIndex'] ?? 0;
+
+        await LocalStorageService.saveUserData(
+          userId: id,
+          userName: '$storedName#$storedTag',
+          userAvatar: avatarIndex.toString(),
+        );
+
+        if (!mounted) return;
+        Navigator.pushReplacementNamed(context, '/home', arguments: {
+          'userId': id,
+          'userName': '$storedName#$storedTag',
+          'avatarIndex': avatarIndex,
+          'userTag': storedTag,
+        });
+      } else {
+        _showError('Usuario o Tag incorrectos. Verifica e intenta de nuevo.');
       }
     } catch (e) {
       _showError('Hubo un problema: $e');

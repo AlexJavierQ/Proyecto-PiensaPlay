@@ -40,11 +40,16 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
 
   @override
   Widget build(BuildContext context) {
-    // Usamos Stack para que el contenido se deslice debajo del navbar si quisieramos, 
-    // pero aquí simplemente quitamos el SafeArea superior para que el header toque el borde.
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
-      body: Column(
+    // Use AnnotatedRegion for transparent status bar
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F7FF),
+        body: Column(
         children: [
           _buildHeader(),
           _buildTabs(),
@@ -77,6 +82,7 @@ class _ClassDetailScreenState extends State<ClassDetailScreen>
               ),
             )
           : null,
+      ),
     );
   }
 

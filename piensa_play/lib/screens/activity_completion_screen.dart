@@ -268,9 +268,6 @@ class _ActivityCompletionScreenState extends State<ActivityCompletionScreen> {
   }
 
   Widget _buildActionButtons(BuildContext context, Map<String, dynamic>? args) {
-    final unitId = args?['unitId'];
-    final unitData = args?['unitData'];
-    
     return Column(
       children: [
         _buildButton('Siguiente Misión', const Color(0xFF132757), Colors.white, () {

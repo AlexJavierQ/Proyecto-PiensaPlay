@@ -1,5 +1,6 @@
 import 'dart:math';
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
@@ -106,10 +107,15 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
-      body: SafeArea(
-        child: Column(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F7FF),
+        body: Column(
           children: [
             _buildHeader(),
             Expanded(
@@ -249,8 +255,9 @@ class _CreateClassScreenState extends State<CreateClassScreen> {
   }
 
   Widget _buildHeader() {
+    final topPadding = MediaQuery.of(context).padding.top;
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.fromLTRB(20, topPadding + 20, 20, 20),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           colors: [Color(0xFF132757), Color(0xFF1E3A6E)],

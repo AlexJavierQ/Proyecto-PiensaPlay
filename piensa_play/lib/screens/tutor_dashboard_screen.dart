@@ -1,8 +1,9 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
-import '../utils/local_storage_service.dart';
+
 
 class TutorDashboardScreen extends StatefulWidget {
   const TutorDashboardScreen({super.key});
@@ -51,10 +52,15 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
-      body: SafeArea(
-        child: SingleChildScrollView(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent, // Transparent to show header color
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F7FF),
+        body: SingleChildScrollView( // Removed SafeArea
           physics: const BouncingScrollPhysics(),
           child: Column(
             children: [
@@ -160,7 +166,12 @@ class _TutorDashboardScreenState extends State<TutorDashboardScreen>
 
   Widget _buildHeader() {
     return Container(
-      padding: const EdgeInsets.all(20),
+      padding: EdgeInsets.only(
+        top: MediaQuery.of(context).padding.top + 20,
+        left: 20,
+        right: 20,
+        bottom: 20,
+      ),
       decoration: BoxDecoration(
         gradient: const LinearGradient(
           begin: Alignment.topLeft,

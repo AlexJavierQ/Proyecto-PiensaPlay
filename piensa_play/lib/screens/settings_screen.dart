@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:flutter/services.dart';
 import 'package:share_plus/share_plus.dart';
+import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
 import '../utils/local_storage_service.dart';
@@ -64,6 +65,36 @@ class _SettingsScreenState extends State<SettingsScreen> {
                 _buildSectionTitle('Ajustes de Juego'),
                 _buildSettingsTile(Icons.notifications_active_rounded, 'Notificaciones', true),
                 _buildSettingsTile(Icons.volume_up_rounded, 'Sonidos', true),
+                const SizedBox(height: 32),
+                _buildSectionTitle('Seguridad'),
+                StreamBuilder<DocumentSnapshot>(
+                  stream: FirebaseService.getUserStream(widget.userId),
+                  builder: (context, snapshot) {
+                    bool isLinked = false;
+                    String? email;
+                    if (snapshot.hasData && snapshot.data!.exists) {
+                      final data = snapshot.data!.data() as Map<String, dynamic>;
+                      isLinked = data['authUid'] != null && data['email'] != null;
+                      email = data['email'];
+                    }
+
+                    if (isLinked) {
+                      return _buildActionTile(
+                        Icons.verified_user_rounded, 
+                        'Correo Vinculado\n${email ?? ""}', 
+                        AppStyles.accentGreen, 
+                        () {},
+                      );
+                    }
+                    
+                    return _buildActionTile(
+                      Icons.email_rounded, 
+                      'Vincular Correo', 
+                      AppStyles.primaryBlue, 
+                      () => _showLinkEmailDialog(context),
+                    );
+                  },
+                ),
                 const SizedBox(height: 32),
                 _buildSectionTitle('Cuenta'),
                 _buildActionTile(Icons.logout_rounded, 'Cerrar Sesión', Colors.redAccent, () => _handleLogout(context)),
@@ -135,12 +166,12 @@ class _SettingsScreenState extends State<SettingsScreen> {
             mainAxisAlignment: MainAxisAlignment.center,
             children: [
               Text(
-                '#$tag',
+                fullName.contains('#') ? fullName : '$fullName#$tag',
                 style: const TextStyle(
                   color: Colors.white,
-                  fontSize: 32,
+                  fontSize: 24,
                   fontWeight: FontWeight.w900,
-                  letterSpacing: 4,
+                  letterSpacing: 2,
                 ),
               ),
             ],
@@ -151,10 +182,10 @@ class _SettingsScreenState extends State<SettingsScreen> {
               Expanded(
                 child: ElevatedButton.icon(
                   onPressed: () {
-                    Clipboard.setData(ClipboardData(text: tag));
+                    Clipboard.setData(ClipboardData(text: fullName));
                     ScaffoldMessenger.of(context).showSnackBar(
-                      const SnackBar(
-                        content: Text('¡Código copiado al portapapeles! 📋'),
+                      SnackBar(
+                        content: Text('¡Código completo copiado: $fullName! 📋'),
                         backgroundColor: AppStyles.accentGreen,
                         behavior: SnackBarBehavior.floating,
                       ),
@@ -237,18 +268,13 @@ class _SettingsScreenState extends State<SettingsScreen> {
 
   Widget _buildDevZone(BuildContext context) {
     return Column(
+      crossAxisAlignment: CrossAxisAlignment.start,
       children: [
-        const SizedBox(height: 30),
-        const Text(
-          'Zona de Desarrollo',
-          style: TextStyle(
-            fontSize: 14,
-            fontWeight: FontWeight.bold,
-            color: Colors.grey,
-            letterSpacing: 1.5,
-          ),
+        const Padding(
+          padding: EdgeInsets.only(left: 8, bottom: 16, top: 32),
+          child: Text('Zona de Desarrollo', style: TextStyle(fontSize: 14, fontWeight: FontWeight.bold, color: Colors.grey)),
         ),
-        const SizedBox(height: 10),
+        _buildActionTile(Icons.code, 'Logs de Errores', Colors.grey, () {}),
         GestureDetector(
           onTap: () => _confirmReset(context),
           child: Container(
@@ -299,24 +325,126 @@ class _SettingsScreenState extends State<SettingsScreen> {
     );
   }
 
-  void _handleLogout(BuildContext context) {
-    showDialog(
+  void _handleLogout(BuildContext context) async {
+    final confirm = await showDialog<bool>(
       context: context,
-      builder: (ctx) => AlertDialog(
+      builder: (context) => AlertDialog(
         title: const Text('¿Cerrar Sesión?'),
-        content: const Text('Tendrás que volver a ingresar tus datos para jugar.'),
+        content: const Text('Tendrás que ingresar tus datos nuevamente para jugar.'),
         actions: [
-          TextButton(onPressed: () => Navigator.pop(ctx), child: const Text('Cancelar')),
-          ElevatedButton(
-            style: ElevatedButton.styleFrom(backgroundColor: Colors.redAccent),
-            onPressed: () async {
-              await LocalStorageService.logout();
-              if (!mounted) return;
-              Navigator.pushNamedAndRemoveUntil(context, '/', (r) => false);
-            },
-            child: const Text('Salir', style: TextStyle(color: Colors.white)),
+          TextButton(onPressed: () => Navigator.pop(context, false), child: const Text('Cancelar')),
+          TextButton(
+            onPressed: () => Navigator.pop(context, true),
+            child: const Text('Cerrar Sesión', style: TextStyle(color: Colors.red)),
           ),
         ],
+      ),
+    );
+
+    if (confirm == true) {
+      await FirebaseService.logout();
+      await LocalStorageService.logout();
+      if (mounted) {
+        Navigator.of(context).pushNamedAndRemoveUntil('/', (route) => false);
+      }
+    }
+  }
+
+  void _showLinkEmailDialog(BuildContext context) {
+    final emailController = TextEditingController();
+    final passwordController = TextEditingController();
+    final confirmController = TextEditingController();
+    bool isLinking = false;
+    String? errorMsg;
+
+    showDialog(
+      context: context,
+      barrierDismissible: false,
+      builder: (context) => StatefulBuilder(
+        builder: (context, setState) => AlertDialog(
+          title: const Text('Vincular Correo'),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              const Text('Asegura tu cuenta vinculando un correo electrónico para recuperar tu acceso.', style: TextStyle(fontSize: 13, color: Colors.grey)),
+              const SizedBox(height: 16),
+              if (errorMsg != null)
+                Container(
+                  padding: const EdgeInsets.all(8),
+                  margin: const EdgeInsets.only(bottom: 8),
+                  decoration: BoxDecoration(color: Colors.red[50], borderRadius: BorderRadius.circular(8)),
+                  child: Text(errorMsg!, style: const TextStyle(color: Colors.red, fontSize: 12)),
+                ),
+              TextField(
+                controller: emailController,
+                decoration: const InputDecoration(labelText: 'Correo Electrónico', prefixIcon: Icon(Icons.email_outlined)),
+                keyboardType: TextInputType.emailAddress,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: passwordController,
+                decoration: const InputDecoration(labelText: 'Contraseña', prefixIcon: Icon(Icons.lock_outline)),
+                obscureText: true,
+              ),
+              const SizedBox(height: 8),
+              TextField(
+                controller: confirmController,
+                decoration: const InputDecoration(labelText: 'Confirmar Contraseña', prefixIcon: Icon(Icons.lock_outline)),
+                obscureText: true,
+              ),
+            ],
+          ),
+          actions: [
+            TextButton(
+              onPressed: isLinking ? null : () => Navigator.pop(context),
+              child: const Text('Cancelar'),
+            ),
+            ElevatedButton(
+              onPressed: isLinking ? null : () async {
+                if (emailController.text.isEmpty || passwordController.text.isEmpty) {
+                  setState(() => errorMsg = 'Completa todos los campos');
+                  return;
+                }
+                if (passwordController.text != confirmController.text) {
+                  setState(() => errorMsg = 'Las contraseñas no coinciden');
+                  return;
+                }
+                if (passwordController.text.length < 6) {
+                  setState(() => errorMsg = 'La contraseña debe tener al menos 6 caracteres');
+                  return;
+                }
+
+                setState(() {
+                  isLinking = true;
+                  errorMsg = null;
+                });
+
+                try {
+                  await FirebaseService.linkEmailToCurrentAccount(
+                    email: emailController.text.trim(),
+                    password: passwordController.text,
+                    currentUserId: widget.userId,
+                  );
+                  if (context.mounted) {
+                    Navigator.pop(context);
+                    ScaffoldMessenger.of(context).showSnackBar(
+                      const SnackBar(content: Text('¡Correo vinculado exitosamente!'), backgroundColor: AppStyles.accentGreen),
+                    );
+                  }
+                } catch (e) {
+                  setState(() {
+                    isLinking = false;
+                    errorMsg = e.toString().replaceAll('Exception: ', '');
+                  });
+                }
+              },
+              style: ElevatedButton.styleFrom(backgroundColor: AppStyles.primaryBlue),
+              child: isLinking 
+                  ? const SizedBox(width: 16, height: 16, child: CircularProgressIndicator(color: Colors.white, strokeWidth: 2))
+                  : const Text('Vincular', style: TextStyle(color: Colors.white)),
+            ),
+          ],
+        ),
       ),
     );
   }

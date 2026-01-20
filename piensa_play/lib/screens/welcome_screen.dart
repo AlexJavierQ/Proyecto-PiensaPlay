@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'dart:math' as math;
 import '../utils/app_styles.dart';
 import '../utils/local_storage_service.dart';
@@ -91,8 +92,14 @@ class _WelcomeScreenState extends State<WelcomeScreen>
   Widget build(BuildContext context) {
     final size = MediaQuery.of(context).size;
 
-    return Scaffold(
-      body: Container(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        body: Container(
         width: double.infinity,
         height: double.infinity,
         decoration: const BoxDecoration(gradient: AppStyles.backgroundGradient),
@@ -201,8 +208,9 @@ class _WelcomeScreenState extends State<WelcomeScreen>
           ],
         ),
       ),
-    );
-  }
+    ),
+  );
+}
 
   List<Widget> _buildParticles(Size size) {
     return List.generate(6, (index) {

@@ -1,7 +1,65 @@
 import 'dart:async';
 import 'package:cloud_firestore/cloud_firestore.dart';
+import 'package:firebase_auth/firebase_auth.dart';
 
 class FirebaseService {
+
+  // ==================== AUTH METHODS ====================
+
+  /// Links an email/password to the current user's Firestore document.
+  static Future<void> linkEmailToCurrentAccount({
+    required String email, 
+    required String password, 
+    required String currentUserId
+  }) async {
+    try {
+      // 1. Create auth user
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email, 
+        password: password
+      );
+      
+      // 2. Update Firestore document
+      await FirebaseFirestore.instance.collection('users').doc(currentUserId).update({
+        'authUid': userCredential.user!.uid,
+        'email': email,
+      });
+    } catch (e) {
+      throw Exception('Error vinculando correo: $e');
+    }
+  }
+
+  /// Logs in with email/password and returns the Firestore user data.
+  static Future<Map<String, dynamic>?> loginWithEmail(String email, String password) async {
+    try {
+      // 1. Auth Login
+      final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+        email: email,
+        password: password
+      );
+      
+      final uid = userCredential.user!.uid;
+
+      // 2. Find Firestore user by authUid
+      final snapshot = await FirebaseFirestore.instance
+          .collection('users')
+          .where('authUid', isEqualTo: uid)
+          .limit(1)
+          .get();
+
+      if (snapshot.docs.isNotEmpty) {
+        return {'id': snapshot.docs.first.id, ...snapshot.docs.first.data()};
+      }
+      return null;
+    } catch (e) {
+      throw Exception('Error iniciando sesión: $e');
+    }
+  }
+
+  /// Signs out from Firebase Auth.
+  static Future<void> logout() async {
+    await FirebaseAuth.instance.signOut();
+  }
   
   /// Creates a user document in `users` collection and returns the document id.
   static Future<String?> createUser(Map<String, dynamic> data) async {
@@ -10,7 +68,7 @@ class FirebaseService {
     return doc.id;
   }
 
-  /// Gets a user by tag.
+  /// Gets a user by tag (legacy).
   static Future<Map<String, dynamic>?> getUserByTag(String tag) async {
     final snapshot = await FirebaseFirestore.instance
         .collection('users')
@@ -19,6 +77,26 @@ class FirebaseService {
         .get();
     if (snapshot.docs.isNotEmpty) {
       return {'id': snapshot.docs.first.id, ...snapshot.docs.first.data()};
+    }
+    return null;
+  }
+
+  /// Gets a user by name and tag credential.
+  static Future<Map<String, dynamic>?> getUserByCredentials(String name, String tag) async {
+    final snapshot = await FirebaseFirestore.instance
+        .collection('users')
+        .where('tag', isEqualTo: tag)
+        .limit(1)
+        .get();
+        
+    if (snapshot.docs.isNotEmpty) {
+      final data = snapshot.docs.first.data();
+      final storedName = data['name'] as String?;
+      
+      // Case-insensitive comparison
+      if (storedName != null && storedName.toLowerCase() == name.toLowerCase()) {
+        return {'id': snapshot.docs.first.id, ...data};
+      }
     }
     return null;
   }

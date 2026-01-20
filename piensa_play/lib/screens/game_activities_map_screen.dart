@@ -1,4 +1,5 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
 import '../utils/app_styles.dart';
 import '../utils/firebase_service.dart';
@@ -21,9 +22,9 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
     super.initState();
     _loadUserId();
     _animController = AnimationController(
-      duration: const Duration(milliseconds: 800),
-      vsync: this,
-    )..forward();
+        duration: const Duration(milliseconds: 800),
+        vsync: this,
+      )..forward();
   }
 
   @override
@@ -54,9 +55,15 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
       );
     }
 
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
-      body: StreamBuilder<QuerySnapshot>(
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F7FF),
+        body: StreamBuilder<QuerySnapshot>(
           stream: FirebaseService.getUserProgress(_userId!),
           builder: (context, progressSnapshot) {
             if (progressSnapshot.connectionState == ConnectionState.waiting) {
@@ -149,6 +156,7 @@ class _GameActivitiesMapScreenState extends State<GameActivitiesMapScreen>
                 );
           },
         ),
+      ),
     );
   }
 

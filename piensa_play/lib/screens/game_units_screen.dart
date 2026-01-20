@@ -1,6 +1,7 @@
 import 'package:flutter/material.dart';
+import 'package:flutter/services.dart';
 import 'package:cloud_firestore/cloud_firestore.dart';
-import '../utils/app_styles.dart';
+
 import '../utils/firebase_service.dart';
 
 class GameUnitsScreen extends StatefulWidget {
@@ -30,8 +31,14 @@ class _GameUnitsScreenState extends State<GameUnitsScreen> with SingleTickerProv
 
   @override
   Widget build(BuildContext context) {
-    return Scaffold(
-      backgroundColor: const Color(0xFFF0F7FF),
+    return AnnotatedRegion<SystemUiOverlayStyle>(
+      value: const SystemUiOverlayStyle(
+        statusBarColor: Colors.transparent,
+        statusBarIconBrightness: Brightness.light,
+        statusBarBrightness: Brightness.dark,
+      ),
+      child: Scaffold(
+        backgroundColor: const Color(0xFFF0F7FF),
       body: Column(
         children: [
           _buildHeader(context),
@@ -68,6 +75,7 @@ class _GameUnitsScreenState extends State<GameUnitsScreen> with SingleTickerProv
             ),
           ),
         ],
+      ),
       ),
     );
   }
