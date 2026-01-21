@@ -12,14 +12,14 @@ import {
     writeBatch
 } from 'firebase/firestore';
 
-// Firebase config (misma que en la app)
+// Firebase config - usar variables de entorno para seguridad
 const firebaseConfig = {
-    apiKey: "AIzaSyCsTvJhGDO4M1F8ulxH3PDFr-8_dgtVqhE",
-    authDomain: "piensa-play-56a1c.firebaseapp.com",
-    projectId: "piensa-play-56a1c",
-    storageBucket: "piensa-play-56a1c.appspot.com",
-    messagingSenderId: "738250convivenciahernández464",
-    appId: "1:738250464476:web:a2e8bc0b5a1e8c5e8f1234"
+    apiKey: process.env.FIREBASE_API_KEY || "YOUR_API_KEY_HERE",
+    authDomain: process.env.FIREBASE_AUTH_DOMAIN || "piensa-play-56a1c.firebaseapp.com",
+    projectId: process.env.FIREBASE_PROJECT_ID || "piensa-play-56a1c",
+    storageBucket: process.env.FIREBASE_STORAGE_BUCKET || "piensa-play-56a1c.appspot.com",
+    messagingSenderId: process.env.FIREBASE_MESSAGING_SENDER_ID || "738250464476",
+    appId: process.env.FIREBASE_APP_ID || "YOUR_APP_ID_HERE"
 };
 
 const app = initializeApp(firebaseConfig);
