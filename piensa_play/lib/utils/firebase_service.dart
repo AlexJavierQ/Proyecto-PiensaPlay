@@ -101,22 +101,172 @@ class FirebaseService {
     return null;
   }
 
-  /// Validates tutor credentials and returns tutor data if valid.
-  static Future<Map<String, dynamic>?> validateTutor(String username, String password) async {
-    final snapshot = await FirebaseFirestore.instance
+  /// Validates tutor credentials (username OR email) and returns tutor data if valid.
+  static Future<Map<String, dynamic>?> validateTutor(String identifier, String password) async {
+    try {
+       // 1. Try Firebase Authentication (Self-Healing Strategy)
+       // If the user exists in Auth, we can trust the password.
+       // We then check/create the Firestore doc.
+       if (identifier.contains('@')) {
+         try {
+           final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+             email: identifier,
+             password: password,
+           );
+           
+           final uid = userCredential.user!.uid;
+           
+           // Check if doc exists by ID (New Standard)
+           final docSnap = await FirebaseFirestore.instance.collection('tutors').doc(uid).get();
+           if (docSnap.exists) {
+              return {'id': docSnap.id, ...docSnap.data()!};
+           }
+
+           // Check if doc exists by email (Legacy/Migrated)
+           final querySnap = await FirebaseFirestore.instance
+              .collection('tutors')
+              .where('email', isEqualTo: identifier)
+              .limit(1)
+              .get();
+              
+           if (querySnap.docs.isNotEmpty) {
+             return {'id': querySnap.docs.first.id, ...querySnap.docs.first.data()};
+           }
+
+           // REPAIR: Auth success but Firestore missing -> Create it now.
+           await FirebaseFirestore.instance.collection('tutors').doc(uid).set({
+              'username': identifier.split('@')[0], 
+              'email': identifier,
+              'password': password, 
+              'authUid': uid,
+              'name': 'Tutor',
+              'createdAt': FieldValue.serverTimestamp(),
+           });
+
+           return {
+              'id': uid,
+              'username': identifier.split('@')[0],
+              'email': identifier,
+              'name': 'Tutor',
+           };
+
+         } catch (authError) {
+           // If Auth fails (e.g. not found or wrong password), we fall through to the
+           // legacy simple Firestore check below. This ensures old accounts 
+           // (created without Auth linkage) still work.
+           // print('Auth login failed for $identifier: $authError');
+         }
+       }
+
+       // 2. Legacy Firestore-Direct Check
+       // Search by Username OR Email
+       
+       // Check 1: Is it an email match?
+      final emailSnapshot = await FirebaseFirestore.instance
+          .collection('tutors')
+          .where('email', isEqualTo: identifier)
+          .where('password', isEqualTo: password)
+          .limit(1)
+          .get();
+      
+      if (emailSnapshot.docs.isNotEmpty) {
+        return {
+          'id': emailSnapshot.docs.first.id,
+          ...emailSnapshot.docs.first.data(),
+        };
+      }
+
+      // Check 2: Is it a username match?
+      final usernameSnapshot = await FirebaseFirestore.instance
+          .collection('tutors')
+          .where('username', isEqualTo: identifier)
+          .where('password', isEqualTo: password)
+          .limit(1)
+          .get();
+
+      if (usernameSnapshot.docs.isNotEmpty) {
+        return {
+          'id': usernameSnapshot.docs.first.id,
+          ...usernameSnapshot.docs.first.data(),
+        };
+      }
+      
+      return null;
+    } catch (e) {
+      print('Error validando tutor details: $e');
+      return null;
+    }
+  }
+
+  /// Creates a new tutor account with Firebase Auth.
+  static Future<Map<String, dynamic>> createTutor(String username, String password, String email) async {
+    // 1. Check if username already exists in Firestore
+    final exists = await FirebaseFirestore.instance
         .collection('tutors')
         .where('username', isEqualTo: username)
-        .where('password', isEqualTo: password)
         .limit(1)
         .get();
-    
-    if (snapshot.docs.isNotEmpty) {
-      return {
-        'id': snapshot.docs.first.id,
-        ...snapshot.docs.first.data(),
-      };
+
+    if (exists.docs.isNotEmpty) {
+      throw Exception('El nombre de usuario ya existe');
     }
-    return null;
+
+    // 2. Create Auth User
+    String? authUid;
+    try {
+      final userCredential = await FirebaseAuth.instance.createUserWithEmailAndPassword(
+        email: email,
+        password: password,
+      );
+      authUid = userCredential.user!.uid;
+    } on FirebaseAuthException catch (e) {
+      if (e.code == 'weak-password') {
+        throw Exception('La contraseña es muy débil');
+      } else if (e.code == 'email-already-in-use') {
+        throw Exception('El correo ya está registrado');
+      }
+      throw Exception('Error de autenticación: ${e.message}');
+    } catch (e) {
+      // WORKAROUND: If we get the PigeonUserDetails error, it means the user MIGHT have been created
+      // but the return type failed serialization due to version mismatch.
+      // We check if we can log in, implies creation success.
+      if (e.toString().contains('PigeonUserDetails') || e.toString().contains('subtype of type')) {
+        try {
+           final userCredential = await FirebaseAuth.instance.signInWithEmailAndPassword(
+            email: email,
+            password: password,
+          );
+          authUid = userCredential.user!.uid;
+        } catch (loginError) {
+           throw Exception('Error crítico de versión: ${e.toString()}');
+        }
+      } else {
+        rethrow;
+      }
+    }
+
+    if (authUid == null) {
+       throw Exception('No se pudo obtener el ID de usuario.');
+    }
+
+    // 3. Create Firestore Document
+    // We use the Auth UID as the document ID for consistency to avoid duplicates
+    // and make lookups easier.
+    final docRef = await FirebaseFirestore.instance.collection('tutors').doc(authUid).set({
+      'username': username,
+      'password': password, 
+      'email': email,
+      'authUid': authUid,
+      'name': username,
+      'createdAt': FieldValue.serverTimestamp(),
+    });
+
+    return {
+      'id': authUid,
+      'username': username,
+      'email': email,
+      'name': username,
+    };
   }
 
   /// Fetches all glossary terms.

@@ -69,7 +69,17 @@ class _GameUnitsScreenState extends State<GameUnitsScreen> with SingleTickerProv
                   return _buildEmptyState();
                 }
 
-                final units = snapshot.data!.docs;
+                // Filter for global units (where classId is null or empty)
+                final units = snapshot.data!.docs.where((doc) {
+                  final data = doc.data() as Map<String, dynamic>;
+                  final classId = data['classId'];
+                  return classId == null || classId == '';
+                }).toList();
+
+                if (units.isEmpty) {
+                  return _buildEmptyState();
+                }
+
                 return _buildMissionsList(units);
               },
             ),

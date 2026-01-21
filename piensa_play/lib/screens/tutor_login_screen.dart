@@ -13,9 +13,12 @@ class TutorLoginScreen extends StatefulWidget {
 class _TutorLoginScreenState extends State<TutorLoginScreen>
     with SingleTickerProviderStateMixin {
   final _userController = TextEditingController();
+  final _emailController = TextEditingController();
   final _passController = TextEditingController();
+  final _confirmPassController = TextEditingController();
   bool _isLoading = false;
   bool _obscurePassword = true;
+  bool _isLogin = true;
   
   late AnimationController _animController;
   late Animation<double> _fadeAnimation;
@@ -44,69 +47,105 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
   @override
   void dispose() {
     _userController.dispose();
+    _emailController.dispose();
     _passController.dispose();
+    _confirmPassController.dispose();
     _animController.dispose();
     super.dispose();
   }
 
-  Future<void> _login() async {
+  Future<void> _handleSubmit() async {
     final user = _userController.text.trim();
     final pass = _passController.text.trim();
-    
-    if (user.isEmpty || pass.isEmpty) {
-      ScaffoldMessenger.of(context).showSnackBar(
-        const SnackBar(
-          content: Text('Por favor ingresa usuario y contraseña'),
-          backgroundColor: Colors.orange,
-        ),
-      );
-      return;
-    }
+    final email = _emailController.text.trim();
     
     setState(() => _isLoading = true);
     
     try {
-      // Buscar el tutor en Firebase
-      final tutorData = await FirebaseService.validateTutor(user, pass);
-      
-      if (tutorData != null && mounted) {
-        Navigator.pushReplacementNamed(
-          context,
-          '/tutor_dashboard',
-          arguments: {
-            'tutorId': tutorData['id'] ?? 'demo_tutor',
-            'tutorName': tutorData['name'] ?? user,
-          },
-        );
-      } else if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: const Row(
-              children: [
-                Icon(Icons.error_outline, color: Colors.white),
-                SizedBox(width: 12),
-                Text('Credenciales incorrectas'),
-              ],
-            ),
-            backgroundColor: AppStyles.coral,
-            behavior: SnackBarBehavior.floating,
-            shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
-            margin: const EdgeInsets.all(16),
-          ),
-        );
+      if (_isLogin) {
+        // LOGIN
+        if (email.isEmpty || pass.isEmpty) {
+          _showErrorSnackBar('Por favor ingresa correo y contraseña');
+          return;
+        }
+
+        final tutorData = await FirebaseService.validateTutor(email, pass);
+        
+        if (tutorData != null && mounted) {
+          Navigator.pushReplacementNamed(
+            context,
+            '/tutor_dashboard',
+            arguments: {
+              'tutorId': tutorData['id'] ?? 'demo_tutor',
+              'tutorName': tutorData['name'] ?? 'Tutor',
+            },
+          );
+        } else if (mounted) {
+          _showErrorSnackBar('Credenciales incorrectas');
+        }
+      } else {
+        // REGISTER
+        final email = _emailController.text.trim();
+        final confirmPass = _confirmPassController.text.trim();
+
+        if (user.isEmpty || pass.isEmpty || email.isEmpty || confirmPass.isEmpty) {
+          _showErrorSnackBar('Por favor completa todos los campos');
+          return;
+        }
+
+        if (pass != confirmPass) {
+          _showErrorSnackBar('Las contraseñas no coinciden');
+          return;
+        }
+        
+        if (!email.contains('@')) {
+          _showErrorSnackBar('Ingresa un correo válido');
+          return;
+        }
+
+        try {
+          final newTutor = await FirebaseService.createTutor(user, pass, email);
+          if (mounted) {
+            Navigator.pushReplacementNamed(
+              context,
+              '/tutor_dashboard',
+              arguments: {
+                'tutorId': newTutor['id'],
+                'tutorName': newTutor['name'],
+              },
+            );
+          }
+        } catch (e) {
+          // Check for specific error message
+          final msg = e.toString().contains('existe') 
+              ? 'El usuario o correo ya existe' 
+              : 'Error al crear cuenta: ${e.toString().replaceAll("Exception: ", "")}';
+          if (mounted) _showErrorSnackBar(msg);
+        }
       }
     } catch (e) {
-      if (mounted) {
-        ScaffoldMessenger.of(context).showSnackBar(
-          SnackBar(
-            content: Text('Error: $e'),
-            backgroundColor: Colors.red,
-          ),
-        );
-      }
+      if (mounted) _showErrorSnackBar('Error: $e');
     } finally {
       if (mounted) setState(() => _isLoading = false);
     }
+  }
+
+  void _showErrorSnackBar(String message) {
+    ScaffoldMessenger.of(context).showSnackBar(
+      SnackBar(
+        content: Row(
+          children: [
+            const Icon(Icons.error_outline, color: Colors.white),
+            const SizedBox(width: 12),
+            Expanded(child: Text(message)),
+          ],
+        ),
+        backgroundColor: AppStyles.coral,
+        behavior: SnackBarBehavior.floating,
+        shape: RoundedRectangleBorder(borderRadius: BorderRadius.circular(12)),
+        margin: const EdgeInsets.all(16),
+      ),
+    );
   }
 
   @override
@@ -304,12 +343,12 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
                 ),
               ),
               const SizedBox(width: 14),
-              const Column(
+              Column(
                 crossAxisAlignment: CrossAxisAlignment.start,
                 children: [
                   Text(
-                    'Iniciar Sesión',
-                    style: TextStyle(
+                    _isLogin ? 'Iniciar Sesión' : 'Crear Cuenta',
+                    style: const TextStyle(
                       fontSize: 20,
                       fontWeight: FontWeight.w700,
                       color: AppStyles.darkBlue,
@@ -329,11 +368,22 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
           
           const SizedBox(height: 28),
           
-          // Campo de usuario
+          // Campo de usuario (Solo Registro)
+          if (!_isLogin) ...[
+             _buildInputField(
+              controller: _userController,
+              hint: 'Nombre de Usuario',
+              icon: Icons.person_outline_rounded,
+            ),
+            const SizedBox(height: 16),
+          ],
+          
+          // Campo de Correo (Login y Registro)
           _buildInputField(
-            controller: _userController,
-            hint: 'Usuario',
-            icon: Icons.person_outline_rounded,
+            controller: _emailController,
+            hint: 'Correo Electrónico',
+            icon: Icons.email_outlined,
+            keyboardType: TextInputType.emailAddress,
           ),
           
           const SizedBox(height: 16),
@@ -345,6 +395,16 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
             icon: Icons.lock_outline_rounded,
             isPassword: true,
           ),
+
+          if (!_isLogin) ...[
+            const SizedBox(height: 16),
+            _buildInputField(
+              controller: _confirmPassController,
+              hint: 'Confirmar Contraseña',
+              icon: Icons.lock_reset_rounded,
+              isPassword: true,
+            ),
+          ],
           
           const SizedBox(height: 12),
           
@@ -393,7 +453,7 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
               ],
             ),
             child: ElevatedButton(
-              onPressed: _isLoading ? null : _login,
+              onPressed: _isLoading ? null : _handleSubmit,
               style: ElevatedButton.styleFrom(
                 backgroundColor: Colors.transparent,
                 shadowColor: Colors.transparent,
@@ -410,22 +470,53 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
                         strokeWidth: 2.5,
                       ),
                     )
-                  : const Row(
+                  : Row(
                       mainAxisAlignment: MainAxisAlignment.center,
                       children: [
                         Text(
-                          'INGRESAR',
-                          style: TextStyle(
+                          _isLogin ? 'INGRESAR' : 'CREAR CUENTA',
+                          style: const TextStyle(
                             fontSize: 16,
                             fontWeight: FontWeight.w800,
                             color: Colors.white,
                             letterSpacing: 1,
                           ),
                         ),
-                        SizedBox(width: 8),
-                        Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
+                        const SizedBox(width: 8),
+                        const Icon(Icons.arrow_forward_rounded, color: Colors.white, size: 20),
                       ],
                     ),
+            ),
+          ),
+          
+          const SizedBox(height: 24),
+          
+          // Toggle Login/Register
+          Center(
+            child: GestureDetector(
+              onTap: () {
+                setState(() {
+                  _isLogin = !_isLogin;
+                  _animController.reset();
+                  _animController.forward();
+                });
+              },
+              child: RichText(
+                text: TextSpan(
+                  style: const TextStyle(fontSize: 14, color: AppStyles.textLight),
+                  children: [
+                    TextSpan(text: _isLogin ? '¿No tienes cuenta? ' : '¿Ya tienes cuenta? '),
+                    TextSpan(
+                      text: _isLogin ? 'Regístrate' : 'Inicia Sesión',
+                      style: const TextStyle(
+                        color: AppStyles.primaryBlue,
+                        fontWeight: FontWeight.bold,
+                        decoration: TextDecoration.underline,
+                      ),
+                    ),
+                  ],
+                ),
+              ),
             ),
           ),
           
@@ -484,6 +575,7 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
     required String hint,
     required IconData icon,
     bool isPassword = false,
+    TextInputType? keyboardType,
   }) {
     return Container(
       decoration: BoxDecoration(
@@ -496,6 +588,7 @@ class _TutorLoginScreenState extends State<TutorLoginScreen>
       child: TextField(
         controller: controller,
         obscureText: isPassword && _obscurePassword,
+        keyboardType: keyboardType,
         style: const TextStyle(
           fontWeight: FontWeight.w600,
           color: AppStyles.darkBlue,

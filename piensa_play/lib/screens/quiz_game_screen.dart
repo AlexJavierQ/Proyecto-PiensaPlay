@@ -104,7 +104,8 @@ class _QuizGameScreenState extends State<QuizGameScreen> with TickerProviderStat
     }
 
     final currentQuestion = _questions[_currentQuestionIndex];
-    final answers = currentQuestion['answers'] as List<Map<String, dynamic>>;
+    final rawAnswers = currentQuestion['answers'] as List?;
+    final answers = rawAnswers?.map((a) => Map<String, dynamic>.from(a as Map)).toList() ?? [];
 
     return Scaffold(
       backgroundColor: const Color(0xFFF0F7FF),
