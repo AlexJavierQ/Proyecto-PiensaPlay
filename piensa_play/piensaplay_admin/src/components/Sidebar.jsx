@@ -11,7 +11,8 @@ import {
     BarChart3,
     Users,
     Sparkles,
-    Zap
+    Zap,
+    GraduationCap
 } from 'lucide-react';
 import { auth } from '../firebase';
 import { signOut } from 'firebase/auth';
@@ -31,6 +32,8 @@ const Sidebar = () => {
         { icon: Gamepad2, label: 'Unidades & Juegos', path: '/units' },
         { icon: UserCircle, label: 'Tienda', path: '/avatars' },
         { icon: BookOpen, label: 'Glosario', path: '/glossary' },
+        { divider: true, label: 'Educadores' },
+        { icon: GraduationCap, label: 'Tutores', path: '/tutors' },
         { divider: true, label: 'Comunidad' },
         { icon: Users, label: 'Jugadores', path: '/students' },
         { divider: true, label: 'Sistema' },

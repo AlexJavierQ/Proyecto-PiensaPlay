@@ -1,13 +1,14 @@
 import React, { useState, useEffect, useRef } from 'react';
-import { db, storage } from '../firebase';
+import { db } from '../firebase';
 import { collection, query, where, onSnapshot, addDoc, updateDoc, doc, deleteDoc } from 'firebase/firestore';
-import { ref, uploadBytesResumable, getDownloadURL, deleteObject } from 'firebase/storage';
+import { uploadToCloudinary } from '../cloudinary';
 import {
     Gamepad2, Plus, Edit2, Trash2, MapPin, Layers,
     ChevronDown, ChevronUp, Play, Image, Music, Video,
-    Upload, X, Check, AlertCircle, Loader2, Eye, FileQuestion
+    Upload, X, Check, AlertCircle, Loader2, Eye, FileQuestion, Info, ArrowLeft, ArrowRight
 } from 'lucide-react';
 import { motion, AnimatePresence } from 'framer-motion';
+import { getQuestionForm, getDefaultQuestion, validateQuestions, getAddButtonLabel, getMinQuestions } from '../components/QuestionForms';
 import './UnitsPage.css';
 
 const ACTIVITY_TYPES = [
@@ -39,6 +40,7 @@ const UnitsPage = () => {
     const [editingActivity, setEditingActivity] = useState(null);
     const [activityUnitId, setActivityUnitId] = useState(null);
     const [activeTab, setActiveTab] = useState('general');
+    const [activeStep, setActiveStep] = useState(1);
     const [activityForm, setActivityForm] = useState({
         title: '',
         subtitle: '',
@@ -108,51 +110,37 @@ const UnitsPage = () => {
     const handleFileUpload = async (file, mediaType) => {
         if (!file) return;
 
-        const maxSize = mediaType === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024; // 100MB for video, 10MB for others
+        const maxSize = mediaType === 'video' ? 100 * 1024 * 1024 : 10 * 1024 * 1024;
         if (file.size > maxSize) {
             alert(`El archivo es muy grande. Máximo ${maxSize / (1024 * 1024)}MB`);
             return;
         }
 
-        setUploading(prev => ({ ...prev, [mediaType]: true }));
-        setUploadProgress(prev => ({ ...prev, [mediaType]: 0 }));
+        try {
+            setUploading(prev => ({ ...prev, [mediaType]: true }));
+            setUploadProgress(prev => ({ ...prev, [mediaType]: 5 }));
 
-        const fileName = `${Date.now()}_${file.name}`;
-        const storageRef = ref(storage, `activities/${MEDIA_TYPES[mediaType].folder}/${fileName}`);
-
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on('state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const result = await uploadToCloudinary(file, (progress) => {
                 setUploadProgress(prev => ({ ...prev, [mediaType]: progress }));
-            },
-            (error) => {
-                console.error('Upload error:', error);
-                setUploading(prev => ({ ...prev, [mediaType]: false }));
-                alert('Error al subir el archivo');
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                setActivityForm(prev => ({
-                    ...prev,
-                    media: { ...prev.media, [mediaType]: downloadURL }
-                }));
-                setUploading(prev => ({ ...prev, [mediaType]: false }));
-            }
-        );
+            });
+
+            setActivityForm(prev => ({
+                ...prev,
+                media: { ...prev.media, [mediaType]: result.url }
+            }));
+
+            setUploadProgress(prev => ({ ...prev, [mediaType]: 100 }));
+            setUploading(prev => ({ ...prev, [mediaType]: false }));
+        } catch (error) {
+            console.error('Cloudinary Upload error:', error);
+            setUploading(prev => ({ ...prev, [mediaType]: false }));
+            alert(`Error al subir: ${error.message}`);
+        }
     };
 
     const handleRemoveMedia = async (mediaType) => {
-        const url = activityForm.media[mediaType];
-        if (url && url.includes('firebase')) {
-            try {
-                const fileRef = ref(storage, url);
-                await deleteObject(fileRef);
-            } catch (err) {
-                console.log('Error removing file from storage:', err);
-            }
-        }
+        // Con Cloudinary, la eliminación requiere backend
+        // Por ahora solo limpiamos la URL del formulario
         setActivityForm(prev => ({
             ...prev,
             media: { ...prev.media, [mediaType]: null }
@@ -161,34 +149,35 @@ const UnitsPage = () => {
 
     // Question Handlers
     const addQuestion = () => {
+        const newQuestion = getDefaultQuestion(activityForm.type);
         setActivityForm(prev => ({
             ...prev,
-            questions: [...prev.questions, {
-                id: `q_${Date.now()}`,
-                text: '',
-                imageUrl: null,
-                audioUrl: null,
-                options: ['', '', '', ''],
-                correctIndex: 0,
-                explanation: ''
-            }]
+            questions: [
+                ...prev.questions,
+                newQuestion
+            ]
         }));
+    };
+
+    // Get validation status for current activity
+    const getValidationStatus = () => {
+        const minQuestions = getMinQuestions(activityForm.type);
+        if (activityForm.questions.length < minQuestions) {
+            return { valid: false, message: `Se requieren al menos ${minQuestions} ${minQuestions === 1 ? 'pregunta' : 'preguntas'}` };
+        }
+        return validateQuestions(activityForm.type, activityForm.questions);
+    };
+
+    const canSaveActivity = () => {
+        if (!activityForm.title.trim()) return false;
+        const validation = getValidationStatus();
+        return validation.valid;
     };
 
     const updateQuestion = (index, field, value) => {
         setActivityForm(prev => {
             const questions = [...prev.questions];
             questions[index] = { ...questions[index], [field]: value };
-            return { ...prev, questions };
-        });
-    };
-
-    const updateQuestionOption = (qIndex, optIndex, value) => {
-        setActivityForm(prev => {
-            const questions = [...prev.questions];
-            const options = [...questions[qIndex].options];
-            options[optIndex] = value;
-            questions[qIndex] = { ...questions[qIndex], options };
             return { ...prev, questions };
         });
     };
@@ -210,32 +199,34 @@ const UnitsPage = () => {
         }
 
         const uploadKey = `q_${questionIndex}_${mediaType}`;
-        setUploading(prev => ({ ...prev, [uploadKey]: true }));
-        setUploadProgress(prev => ({ ...prev, [uploadKey]: 0 }));
+        try {
+            setUploading(prev => ({ ...prev, [uploadKey]: true }));
+            setUploadProgress(prev => ({ ...prev, [uploadKey]: 5 }));
 
-        const fileName = `${Date.now()}_${file.name}`;
-        const folder = mediaType === 'image' ? 'questions/images' : 'questions/audios';
-        const storageRef = ref(storage, `activities/${folder}/${fileName}`);
-
-        const uploadTask = uploadBytesResumable(storageRef, file);
-
-        uploadTask.on('state_changed',
-            (snapshot) => {
-                const progress = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+            const result = await uploadToCloudinary(file, (progress) => {
                 setUploadProgress(prev => ({ ...prev, [uploadKey]: progress }));
-            },
-            (error) => {
-                console.error('Upload error:', error);
-                setUploading(prev => ({ ...prev, [uploadKey]: false }));
-                alert('Error al subir el archivo');
-            },
-            async () => {
-                const downloadURL = await getDownloadURL(uploadTask.snapshot.ref);
-                const field = mediaType === 'image' ? 'imageUrl' : 'audioUrl';
-                updateQuestion(questionIndex, field, downloadURL);
-                setUploading(prev => ({ ...prev, [uploadKey]: false }));
-            }
-        );
+            });
+
+            const downloadURL = result.url;
+            const newQuestions = [...activityForm.questions];
+            const q = { ...newQuestions[questionIndex] };
+
+            if (mediaType === 'cardA_image') q.cardA = { ...q.cardA, image: downloadURL };
+            else if (mediaType === 'cardB_image') q.cardB = { ...q.cardB, image: downloadURL };
+            else if (mediaType.includes('Image')) q[mediaType] = downloadURL;
+            else if (mediaType === 'image') q.imageUrl = downloadURL;
+            else if (mediaType === 'audio') q.audioUrl = downloadURL;
+            else q[mediaType] = downloadURL;
+
+            newQuestions[questionIndex] = q;
+            setActivityForm(prev => ({ ...prev, questions: newQuestions }));
+            setUploadProgress(prev => ({ ...prev, [uploadKey]: 100 }));
+            setUploading(prev => ({ ...prev, [uploadKey]: false }));
+        } catch (error) {
+            console.error('Question Upload error:', error);
+            setUploading(prev => ({ ...prev, [uploadKey]: false }));
+            alert(`Error en pregunta: ${error.message}`);
+        }
     };
 
     // Activity Modal Handlers
@@ -254,6 +245,7 @@ const UnitsPage = () => {
                 questions: activity.questions || [],
                 instructions: activity.instructions || ''
             });
+            setActiveStep(2); // Start at details if editing
         } else {
             setEditingActivity(null);
             setActivityForm({
@@ -266,6 +258,7 @@ const UnitsPage = () => {
                 questions: [],
                 instructions: ''
             });
+            setActiveStep(1); // Start at type selection if new
         }
         setShowActivityModal(true);
     };
@@ -332,37 +325,55 @@ const UnitsPage = () => {
     // Upload Zone Component 
     const UploadZone = ({ type, currentUrl, onUpload, onRemove, uploadKey }) => {
         const MediaIcon = MEDIA_TYPES[type].icon;
-        const isUploading = uploading[uploadKey || type];
-        const progress = uploadProgress[uploadKey || type] || 0;
+        const key = uploadKey || type;
+        const isUploading = uploading[key];
+        const progress = uploadProgress[key] || 0;
 
         return (
-            <div className={`upload-zone ${currentUrl ? 'has-media' : ''}`}>
+            <div className={`upload-zone ${currentUrl ? 'has-media' : ''} ${isUploading ? 'uploading' : ''}`}>
                 {isUploading ? (
-                    <div className="upload-progress">
-                        <Loader2 className="spin" size={24} />
-                        <div className="progress-bar">
-                            <div className="progress-fill" style={{ width: `${progress}%` }}></div>
+                    <div className="upload-progress-v2">
+                        <div className="progress-ring-container">
+                            <Loader2 className="spin" size={32} />
+                            <span className="progress-number">{progress}%</span>
                         </div>
-                        <span>{Math.round(progress)}%</span>
+                        <div className="progress-bar-v2">
+                            <div className="progress-fill-v2" style={{ width: `${progress}%` }}></div>
+                        </div>
+                        <span className="upload-status">Subiendo {MEDIA_TYPES[type].label}...</span>
                     </div>
                 ) : currentUrl ? (
-                    <div className="media-preview-container">
+                    <div className="media-preview-container-v2">
                         <MediaPreview type={type} url={currentUrl} />
-                        <button type="button" className="remove-media-btn" onClick={onRemove}>
-                            <X size={16} />
-                        </button>
+                        <div className="media-overlay-actions">
+                            <button type="button" className="action-btn-mini remove" onClick={onRemove} title="Eliminar">
+                                <X size={14} />
+                            </button>
+                            <label className="action-btn-mini change" title="Cambiar">
+                                <input
+                                    type="file"
+                                    accept={MEDIA_TYPES[type].accept}
+                                    onChange={(e) => onUpload(e.target.files[0])}
+                                    hidden
+                                />
+                                <Upload size={14} />
+                            </label>
+                        </div>
                     </div>
                 ) : (
-                    <label className="upload-label">
+                    <label className="upload-label-v2">
                         <input
                             type="file"
                             accept={MEDIA_TYPES[type].accept}
                             onChange={(e) => onUpload(e.target.files[0])}
                             hidden
                         />
-                        <MediaIcon size={32} />
-                        <span className="upload-text">Subir {MEDIA_TYPES[type].label}</span>
-                        <span className="upload-hint">Arrastra o haz clic</span>
+                        <div className="upload-icon-wrapper">
+                            <MediaIcon size={28} />
+                            <div className="plus-badge"><Plus size={10} /></div>
+                        </div>
+                        <span className="upload-text-v2">Subir {MEDIA_TYPES[type].label}</span>
+                        <span className="upload-hint-v2">PNG, JPG o MP3 hasta 10MB</span>
                     </label>
                 )}
             </div>
@@ -594,7 +605,7 @@ const UnitsPage = () => {
                             initial={{ y: 50, opacity: 0 }}
                             animate={{ y: 0, opacity: 1 }}
                             exit={{ y: 50, opacity: 0 }}
-                            className="card modal-content modal-large"
+                            className="card modal-content modal-large activity-modal-v3"
                             onClick={e => e.stopPropagation()}
                         >
                             <div className="modal-header">
@@ -602,300 +613,259 @@ const UnitsPage = () => {
                                 <p>Configura el juego o desafío para los jugadores.</p>
                             </div>
 
-                            {/* Tabs  */}
-                            <div className="modal-tabs">
-                                <button
-                                    type="button"
-                                    className={`tab ${activeTab === 'general' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('general')}
-                                >
-                                    <Gamepad2 size={16} />
-                                    General
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`tab ${activeTab === 'media' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('media')}
-                                >
-                                    <Image size={16} />
-                                    Multimedia
-                                </button>
-                                <button
-                                    type="button"
-                                    className={`tab ${activeTab === 'questions' ? 'active' : ''}`}
-                                    onClick={() => setActiveTab('questions')}
-                                >
-                                    <FileQuestion size={16} />
-                                    Preguntas
-                                    {activityForm.questions.length > 0 && (
-                                        <span className="tab-badge">{activityForm.questions.length}</span>
-                                    )}
-                                </button>
+                            {/* Stepper Header */}
+                            <div className="modal-stepper">
+                                <div className={`step-item ${activeStep >= 1 ? 'active' : ''} ${activeStep > 1 ? 'completed' : ''}`}>
+                                    <div className="step-number">{activeStep > 1 ? <Check size={16} /> : '1'}</div>
+                                    <span className="step-label">Tipo</span>
+                                </div>
+                                <div className="step-divider"></div>
+                                <div className={`step-item ${activeStep >= 2 ? 'active' : ''} ${activeStep > 2 ? 'completed' : ''}`}>
+                                    <div className="step-number">{activeStep > 2 ? <Check size={16} /> : '2'}</div>
+                                    <span className="step-label">Detalles</span>
+                                </div>
+                                <div className="step-divider"></div>
+                                <div className={`step-item ${activeStep >= 3 ? 'active' : ''}`}>
+                                    <div className="step-number">3</div>
+                                    <span className="step-label">Contenido</span>
+                                </div>
                             </div>
 
                             <form onSubmit={handleSaveActivity} className="activity-form">
-                                {/* General Tab */}
-                                {activeTab === 'general' && (
-                                    <div className="tab-content">
-                                        <div className="form-group">
-                                            <label>Título de la Actividad</label>
-                                            <input
-                                                type="text"
-                                                value={activityForm.title}
-                                                onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
-                                                required
-                                                placeholder="Ej: Quiz sobre planetas"
-                                            />
+                                {/* Step 1: Select Type */}
+                                {activeStep === 1 && (
+                                    <div className="tab-content step-fade">
+                                        <div className="step-header">
+                                            <h3>Selecciona el Tipo de Juego</h3>
+                                            <p>Elige la mecánica que mejor se adapte a tu objetivo educativo.</p>
                                         </div>
-
-                                        <div className="form-group">
-                                            <label>Instrucciones de la Actividad</label>
-                                            <textarea
-                                                value={activityForm.instructions}
-                                                onChange={(e) => setActivityForm({ ...activityForm, instructions: e.target.value })}
-                                                placeholder="Escribe aquí las instrucciones detalladas para el estudiante..."
-                                                rows={3}
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>Subtítulo (opcional)</label>
-                                            <input
-                                                type="text"
-                                                value={activityForm.subtitle}
-                                                onChange={(e) => setActivityForm({ ...activityForm, subtitle: e.target.value })}
-                                                placeholder="Ej: Demuestra lo que sabes"
-                                            />
-                                        </div>
-
-                                        <div className="form-group">
-                                            <label>Tipo de Juego</label>
-                                            <div className="type-selector">
-                                                {ACTIVITY_TYPES.map(type => (
-                                                    <button
-                                                        key={type.value}
-                                                        type="button"
-                                                        className={`type-option ${activityForm.type === type.value ? 'selected' : ''}`}
-                                                        style={{ '--type-color': type.color }}
-                                                        onClick={() => setActivityForm({ ...activityForm, type: type.value })}
-                                                    >
-                                                        <span className="type-emoji">{type.label.split(' ')[0]}</span>
+                                        <div className="type-selector-grid">
+                                            {ACTIVITY_TYPES.map(type => (
+                                                <button
+                                                    key={type.value}
+                                                    type="button"
+                                                    className={`type-card ${activityForm.type === type.value ? 'selected' : ''}`}
+                                                    onClick={() => {
+                                                        setActivityForm({ ...activityForm, type: type.value });
+                                                        setActiveStep(2);
+                                                    }}
+                                                >
+                                                    <div className="type-icon-circle" style={{ backgroundColor: `${type.color}20`, color: type.color }}>
+                                                        <span className="type-emoji-large">{type.label.split(' ')[0]}</span>
+                                                    </div>
+                                                    <div className="type-card-body">
                                                         <span className="type-name">{type.label.split(' ').slice(1).join(' ')}</span>
                                                         <span className="type-desc">{type.description}</span>
-                                                    </button>
-                                                ))}
+                                                    </div>
+                                                </button>
+                                            ))}
+                                        </div>
+                                    </div>
+                                )}
+
+                                {/* Step 2: Basic Info & Media */}
+                                {activeStep === 2 && (
+                                    <div className="tab-content step-fade">
+                                        <div className="step-header">
+                                            <h3>Detalles de la Actividad</h3>
+                                            <p>Nombre, instrucciones y recursos visuales del juego.</p>
+                                        </div>
+
+                                        <div className="form-split">
+                                            <div className="form-column">
+                                                <div className="form-group">
+                                                    <label>Título de la Actividad</label>
+                                                    <input
+                                                        type="text"
+                                                        value={activityForm.title}
+                                                        onChange={(e) => setActivityForm({ ...activityForm, title: e.target.value })}
+                                                        required
+                                                        placeholder="Ej: Quiz sobre planetas"
+                                                    />
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label>Instrucciones</label>
+                                                    <textarea
+                                                        value={activityForm.instructions}
+                                                        onChange={(e) => setActivityForm({ ...activityForm, instructions: e.target.value })}
+                                                        placeholder="Instrucciones para el estudiante..."
+                                                        rows={4}
+                                                    />
+                                                </div>
+
+                                                <div className="form-group">
+                                                    <label>Subtítulo (opcional)</label>
+                                                    <input
+                                                        type="text"
+                                                        value={activityForm.subtitle}
+                                                        onChange={(e) => setActivityForm({ ...activityForm, subtitle: e.target.value })}
+                                                        placeholder="Ej: Demuestra lo que sabes"
+                                                    />
+                                                </div>
+                                            </div>
+
+                                            <div className="form-column">
+                                                <div className="media-section">
+                                                    <label>Portada e Iconos</label>
+                                                    <div className="mini-media-grid">
+                                                        <div className="mini-upload">
+                                                            <span>Imagen</span>
+                                                            <UploadZone
+                                                                type="image"
+                                                                currentUrl={activityForm.media.image}
+                                                                onUpload={(file) => handleFileUpload(file, 'image')}
+                                                                onRemove={() => handleRemoveMedia('image')}
+                                                            />
+                                                        </div>
+                                                        <div className="mini-upload">
+                                                            <span>Audio</span>
+                                                            <UploadZone
+                                                                type="audio"
+                                                                currentUrl={activityForm.media.audio}
+                                                                onUpload={(file) => handleFileUpload(file, 'audio')}
+                                                                onRemove={() => handleRemoveMedia('audio')}
+                                                            />
+                                                        </div>
+                                                    </div>
+                                                </div>
                                             </div>
                                         </div>
                                     </div>
                                 )}
 
-                                {/* Media Tab */}
-                                {activeTab === 'media' && (
-                                    <div className="tab-content">
-                                        <div className="media-info-banner">
-                                            <AlertCircle size={18} />
-                                            <span>Añade contenido multimedia para hacer la actividad más interactiva y atractiva.</span>
-                                        </div>
+                                {/* Step 3: Game Content - REDESIGNED */}
+                                {activeStep === 3 && (
+                                    <div className="tab-content step-fade">
+                                        {(() => {
+                                            const typeInfo = getTypeInfo(activityForm.type);
+                                            const minQuestions = getMinQuestions(activityForm.type);
+                                            const validation = getValidationStatus();
+                                            const QuestionFormComponent = getQuestionForm(activityForm.type);
+                                            const currentCount = activityForm.questions.length;
 
-                                        <div className="media-upload-grid">
-                                            <div className="media-upload-section">
-                                                <h4><Image size={18} /> Imagen Principal</h4>
-                                                <p className="section-hint">Imagen que se mostrará como portada de la actividad</p>
-                                                <UploadZone
-                                                    type="image"
-                                                    currentUrl={activityForm.media.image}
-                                                    onUpload={(file) => handleFileUpload(file, 'image')}
-                                                    onRemove={() => handleRemoveMedia('image')}
-                                                />
-                                            </div>
+                                            return (
+                                                <div className="content-step-wrapper">
+                                                    {/* Left Panel - Help & Progress */}
+                                                    <div className="content-sidebar">
+                                                        <div className="sidebar-section">
+                                                            <div className="game-type-badge" style={{ backgroundColor: `${typeInfo.color}20`, borderColor: typeInfo.color }}>
+                                                                <span className="badge-emoji">{typeInfo.label.split(' ')[0]}</span>
+                                                                <span className="badge-text">{typeInfo.label.split(' ').slice(1).join(' ')}</span>
+                                                            </div>
+                                                            <p className="type-description">{typeInfo.description}</p>
+                                                        </div>
 
-                                            <div className="media-upload-section">
-                                                <h4><Music size={18} /> Audio / Narración</h4>
-                                                <p className="section-hint">Audio que acompañará la actividad o instrucciones</p>
-                                                <UploadZone
-                                                    type="audio"
-                                                    currentUrl={activityForm.media.audio}
-                                                    onUpload={(file) => handleFileUpload(file, 'audio')}
-                                                    onRemove={() => handleRemoveMedia('audio')}
-                                                />
-                                            </div>
+                                                        <div className="sidebar-section progress-section">
+                                                            <h4>📊 Progreso</h4>
+                                                            <div className="progress-ring-wrapper">
+                                                                <div className="progress-ring" style={{
+                                                                    '--progress': `${Math.min((currentCount / minQuestions) * 100, 100)}%`,
+                                                                    '--color': validation.valid ? '#10b981' : typeInfo.color
+                                                                }}>
+                                                                    <span className="progress-count">{currentCount}</span>
+                                                                    <span className="progress-label">/ {minQuestions} mín.</span>
+                                                                </div>
+                                                            </div>
+                                                            <div className={`status-badge ${validation.valid ? 'ready' : 'pending'}`}>
+                                                                {validation.valid ? (
+                                                                    <><Check size={14} /> Listo para guardar</>
+                                                                ) : (
+                                                                    <><AlertCircle size={14} /> {validation.message}</>
+                                                                )}
+                                                            </div>
+                                                        </div>
 
-                                            <div className="media-upload-section full-width">
-                                                <h4><Video size={18} /> Video Introductorio</h4>
-                                                <p className="section-hint">Video explicativo o introductorio para la actividad (máx. 100MB)</p>
-                                                <UploadZone
-                                                    type="video"
-                                                    currentUrl={activityForm.media.video}
-                                                    onUpload={(file) => handleFileUpload(file, 'video')}
-                                                    onRemove={() => handleRemoveMedia('video')}
-                                                />
-                                            </div>
-                                        </div>
-                                    </div>
-                                )}
+                                                        <div className="sidebar-section tips-section">
+                                                            <h4>💡 Tips</h4>
+                                                            <ul className="tips-list">
+                                                                <li>Añade al menos {minQuestions} elementos</li>
+                                                                <li>Las imágenes hacen el juego más atractivo</li>
+                                                                <li>Puedes reordenar arrastrando</li>
+                                                            </ul>
+                                                        </div>
+                                                    </div>
 
-                                {/* Questions Tab */}
-                                {activeTab === 'questions' && (
-                                    <div className="tab-content">
-                                        <div className="questions-header">
-                                            <div>
-                                                <h4>Preguntas del Quiz</h4>
-                                                <p>Añade las preguntas y respuestas para esta actividad</p>
-                                            </div>
-                                            <button type="button" className="btn btn-small" onClick={addQuestion}>
-                                                <Plus size={16} />
-                                                Añadir Pregunta
-                                            </button>
-                                        </div>
-
-                                        {activityForm.questions.length === 0 ? (
-                                            <div className="empty-questions">
-                                                <FileQuestion size={48} />
-                                                <p>No hay preguntas aún</p>
-                                                <span>Haz clic en "Añadir Pregunta" para comenzar</span>
-                                            </div>
-                                        ) : (
-                                            <div className="questions-list">
-                                                {activityForm.questions.map((question, qIndex) => (
-                                                    <div key={question.id} className="question-card">
-                                                        <div className="question-header">
-                                                            <span className="question-number">Pregunta {qIndex + 1}</span>
-                                                            <button
-                                                                type="button"
-                                                                className="icon-btn delete"
-                                                                onClick={() => removeQuestion(qIndex)}
-                                                            >
-                                                                <Trash2 size={14} />
+                                                    {/* Right Panel - Content Editor */}
+                                                    <div className="content-editor-panel">
+                                                        <div className="editor-header">
+                                                            <h3>Contenido del Juego</h3>
+                                                            <button type="button" className="btn btn-primary" onClick={addQuestion}>
+                                                                <Plus size={16} />
+                                                                {getAddButtonLabel(activityForm.type)}
                                                             </button>
                                                         </div>
 
-                                                        <div className="question-content">
-                                                            <div className="form-group">
-                                                                <label>Texto de la pregunta</label>
-                                                                <textarea
-                                                                    value={question.text}
-                                                                    onChange={(e) => updateQuestion(qIndex, 'text', e.target.value)}
-                                                                    placeholder="Escribe aquí tu pregunta..."
-                                                                    rows={2}
-                                                                />
-                                                            </div>
-
-                                                            <div className="question-media-row">
-                                                                <div className="mini-upload">
-                                                                    <label>Imagen (opcional)</label>
-                                                                    {question.imageUrl ? (
-                                                                        <div className="mini-preview">
-                                                                            <img src={question.imageUrl} alt="" />
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => updateQuestion(qIndex, 'imageUrl', null)}
-                                                                            >
-                                                                                <X size={12} />
-                                                                            </button>
+                                                        <div className="editor-scroll-area">
+                                                            {activityForm.questions.length === 0 ? (
+                                                                <div className="empty-content-state">
+                                                                    <div className="empty-illustration">
+                                                                        <div className="empty-icon-circle" style={{ backgroundColor: `${typeInfo.color}20` }}>
+                                                                            <Plus size={40} strokeWidth={1.5} style={{ color: typeInfo.color }} />
                                                                         </div>
-                                                                    ) : uploading[`q_${qIndex}_image`] ? (
-                                                                        <div className="mini-uploading">
-                                                                            <Loader2 className="spin" size={16} />
-                                                                            <span>{Math.round(uploadProgress[`q_${qIndex}_image`] || 0)}%</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <label className="mini-upload-btn">
-                                                                            <input
-                                                                                type="file"
-                                                                                accept="image/*"
-                                                                                onChange={(e) => handleQuestionMediaUpload(e.target.files[0], qIndex, 'image')}
-                                                                                hidden
-                                                                            />
-                                                                            <Image size={14} />
-                                                                            <span>Subir</span>
-                                                                        </label>
-                                                                    )}
+                                                                    </div>
+                                                                    <h4>Empieza a crear</h4>
+                                                                    <p>Añade {getAddButtonLabel(activityForm.type).toLowerCase()} para que los jugadores puedan interactuar con tu actividad.</p>
+                                                                    <button type="button" className="btn btn-primary btn-large" onClick={addQuestion}>
+                                                                        <Plus size={18} />
+                                                                        Añadir primer elemento
+                                                                    </button>
                                                                 </div>
-
-                                                                <div className="mini-upload">
-                                                                    <label>Audio (opcional)</label>
-                                                                    {question.audioUrl ? (
-                                                                        <div className="mini-preview audio">
-                                                                            <audio controls src={question.audioUrl} />
-                                                                            <button
-                                                                                type="button"
-                                                                                onClick={() => updateQuestion(qIndex, 'audioUrl', null)}
-                                                                            >
-                                                                                <X size={12} />
-                                                                            </button>
-                                                                        </div>
-                                                                    ) : uploading[`q_${qIndex}_audio`] ? (
-                                                                        <div className="mini-uploading">
-                                                                            <Loader2 className="spin" size={16} />
-                                                                            <span>{Math.round(uploadProgress[`q_${qIndex}_audio`] || 0)}%</span>
-                                                                        </div>
-                                                                    ) : (
-                                                                        <label className="mini-upload-btn">
-                                                                            <input
-                                                                                type="file"
-                                                                                accept="audio/*"
-                                                                                onChange={(e) => handleQuestionMediaUpload(e.target.files[0], qIndex, 'audio')}
-                                                                                hidden
-                                                                            />
-                                                                            <Music size={14} />
-                                                                            <span>Subir</span>
-                                                                        </label>
-                                                                    )}
-                                                                </div>
-                                                            </div>
-
-                                                            <div className="form-group">
-                                                                <label>Opciones de respuesta</label>
-                                                                <div className="options-grid">
-                                                                    {question.options.map((option, oIndex) => (
-                                                                        <div
-                                                                            key={oIndex}
-                                                                            className={`option-input ${question.correctIndex === oIndex ? 'correct' : ''}`}
-                                                                        >
-                                                                            <button
-                                                                                type="button"
-                                                                                className="correct-toggle"
-                                                                                onClick={() => updateQuestion(qIndex, 'correctIndex', oIndex)}
-                                                                                title={question.correctIndex === oIndex ? 'Respuesta correcta' : 'Marcar como correcta'}
-                                                                            >
-                                                                                {question.correctIndex === oIndex ? <Check size={14} /> : <span>{oIndex + 1}</span>}
-                                                                            </button>
-                                                                            <input
-                                                                                type="text"
-                                                                                value={option}
-                                                                                onChange={(e) => updateQuestionOption(qIndex, oIndex, e.target.value)}
-                                                                                placeholder={`Opción ${oIndex + 1}`}
-                                                                            />
-                                                                        </div>
+                                                            ) : (
+                                                                <div className="questions-grid">
+                                                                    {activityForm.questions.map((question, qIndex) => (
+                                                                        <QuestionFormComponent
+                                                                            key={question.id || qIndex}
+                                                                            question={question}
+                                                                            index={qIndex}
+                                                                            onUpdate={(field, value) => updateQuestion(qIndex, field, value)}
+                                                                            onDelete={() => removeQuestion(qIndex)}
+                                                                            onMediaUpload={(file, type) => handleQuestionMediaUpload(file, qIndex, type)}
+                                                                            uploading={uploading}
+                                                                            uploadProgress={uploadProgress}
+                                                                        />
                                                                     ))}
                                                                 </div>
-                                                                <p className="options-hint">
-                                                                    <Check size={12} /> Haz clic en el número para marcar la respuesta correcta
-                                                                </p>
-                                                            </div>
-
-                                                            <div className="form-group">
-                                                                <label>Explicación (opcional)</label>
-                                                                <textarea
-                                                                    value={question.explanation}
-                                                                    onChange={(e) => updateQuestion(qIndex, 'explanation', e.target.value)}
-                                                                    placeholder="Explicación que se mostrará después de responder..."
-                                                                    rows={2}
-                                                                />
-                                                            </div>
+                                                            )}
                                                         </div>
                                                     </div>
-                                                ))}
-                                            </div>
-                                        )}
+                                                </div>
+                                            );
+                                        })()}
                                     </div>
                                 )}
 
-                                <div className="modal-footer">
-                                    <button type="button" className="btn" onClick={() => setShowActivityModal(false)}>Cancelar</button>
-                                    <button type="submit" className="btn btn-primary">
-                                        {editingActivity ? 'Actualizar Actividad' : 'Crear Actividad'}
+                                <div className="modal-footer-stepper">
+                                    {activeStep > 1 && (
+                                        <button type="button" className="btn btn-secondary" onClick={() => setActiveStep(activeStep - 1)}>
+                                            <ArrowLeft size={18} /> Anterior
+                                        </button>
+                                    )}
+
+                                    <div className="footer-spacer"></div>
+
+                                    <button type="button" className="btn btn-ghost" onClick={() => setShowActivityModal(false)}>
+                                        Cancelar
                                     </button>
+
+                                    {activeStep < 3 ? (
+                                        <button
+                                            type="button"
+                                            className="btn btn-primary"
+                                            onClick={() => setActiveStep(activeStep + 1)}
+                                            disabled={activeStep === 2 && !activityForm.title}
+                                        >
+                                            Siguiente <ArrowRight size={18} />
+                                        </button>
+                                    ) : (
+                                        <button
+                                            type="submit"
+                                            className="btn btn-accent"
+                                            disabled={!canSaveActivity()}
+                                        >
+                                            {editingActivity ? 'Guardar Cambios' : 'Finalizar y Crear'}
+                                        </button>
+                                    )}
                                 </div>
                             </form>
                         </motion.div>

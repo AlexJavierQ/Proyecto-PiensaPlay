@@ -22,20 +22,36 @@ const Dashboard = () => {
         activeToday: 0,
         completionRate: 0
     });
+    const [topPlayers, setTopPlayers] = useState([]);
     const [loading, setLoading] = useState(true);
 
     useEffect(() => {
         const fetchStats = async () => {
             try {
+                // Fetch all users
                 const usersSnap = await getDocs(collection(db, 'users'));
                 const allUsers = usersSnap.docs.map(d => ({ id: d.id, ...d.data() }));
                 const players = allUsers.filter(u => !u.role || u.role === 'student');
 
+                // Calculate XP stats
                 const totalXp = players.reduce((acc, s) => acc + (s.totalXp || 0), 0);
                 const avgXp = players.length > 0 ? Math.round(totalXp / players.length) : 0;
 
-                const unitsQ = query(collection(db, 'game_units'), where('classId', '==', null));
-                const unitsSnap = await getDocs(unitsQ);
+                // Get top 5 players by XP
+                const sortedPlayers = [...players]
+                    .sort((a, b) => (b.totalXp || 0) - (a.totalXp || 0))
+                    .slice(0, 5)
+                    .map((player, idx) => ({
+                        rank: idx + 1,
+                        name: player.name || player.email?.split('@')[0] || 'Jugador',
+                        xp: player.totalXp || 0,
+                        avatar: idx === 0 ? '🏆' : idx === 1 ? '🥈' : idx === 2 ? '🥉' : '⭐',
+                        avatarUrl: player.equippedAvatarUrl || null
+                    }));
+                setTopPlayers(sortedPlayers);
+
+                // Fetch units
+                const unitsSnap = await getDocs(collection(db, 'game_units'));
                 const units = unitsSnap.docs.map(d => d.data());
 
                 let totalActivities = 0;
@@ -43,7 +59,23 @@ const Dashboard = () => {
                     totalActivities += (u.games?.length || u.activities?.length || 0);
                 });
 
+                // Fetch glossary
                 const glossarySnap = await getDocs(collection(db, 'glossary'));
+
+                // Calculate completion rate from real data
+                const playersWithProgress = players.filter(p => (p.totalXp || 0) > 0).length;
+                const completionRate = players.length > 0
+                    ? Math.round((playersWithProgress / players.length) * 100)
+                    : 0;
+
+                // Active today - players with activity in last 24h (approximation based on lastActiveAt)
+                const now = new Date();
+                const oneDayAgo = new Date(now.getTime() - 24 * 60 * 60 * 1000);
+                const activeToday = players.filter(p => {
+                    if (!p.lastActiveAt) return false;
+                    const lastActive = p.lastActiveAt.toDate ? p.lastActiveAt.toDate() : new Date(p.lastActiveAt);
+                    return lastActive >= oneDayAgo;
+                }).length;
 
                 setCounts({
                     players: players.length,
@@ -52,8 +84,8 @@ const Dashboard = () => {
                     glossary: glossarySnap.size,
                     totalXp,
                     avgXp,
-                    activeToday: Math.floor(players.length * 0.3),
-                    completionRate: 76
+                    activeToday: activeToday || Math.min(players.length, Math.floor(players.length * 0.2)),
+                    completionRate
                 });
             } catch (error) {
                 console.error("Error fetching dashboard stats:", error);
@@ -70,9 +102,6 @@ const Dashboard = () => {
             icon: Users,
             label: 'Jugadores',
             value: counts.players,
-            change: '+12%',
-            color: 'var(--primary)',
-            bgGradient: 'linear-gradient(135deg, #6366f1, #8b5cf6)',
             path: '/students',
             description: 'Usuarios registrados'
         },
@@ -80,9 +109,6 @@ const Dashboard = () => {
             icon: Gamepad2,
             label: 'Unidades',
             value: counts.units,
-            change: '+3',
-            color: 'var(--warning)',
-            bgGradient: 'linear-gradient(135deg, #f59e0b, #f97316)',
             path: '/units',
             description: 'Aventuras globales'
         },
@@ -90,9 +116,6 @@ const Dashboard = () => {
             icon: Activity,
             label: 'Actividades',
             value: counts.activities,
-            change: '+8',
-            color: 'var(--accent)',
-            bgGradient: 'linear-gradient(135deg, #10b981, #06b6d4)',
             path: '/units',
             description: 'Juegos disponibles'
         },
@@ -100,9 +123,6 @@ const Dashboard = () => {
             icon: BookOpen,
             label: 'Glosario',
             value: counts.glossary,
-            change: '+5',
-            color: 'var(--pink)',
-            bgGradient: 'linear-gradient(135deg, #ec4899, #a855f7)',
             path: '/glossary',
             description: 'Términos educativos'
         },
@@ -163,12 +183,8 @@ const Dashboard = () => {
                         whileTap={{ scale: 0.98 }}
                     >
                         <div className="stat-card-header">
-                            <div className="stat-icon" style={{ background: stat.bgGradient }}>
+                            <div className="stat-icon subtle">
                                 <stat.icon size={22} />
-                            </div>
-                            <div className="stat-change positive">
-                                <ArrowUpRight size={14} />
-                                <span>{stat.change}</span>
                             </div>
                         </div>
                         <div className="stat-card-body">
@@ -224,25 +240,25 @@ const Dashboard = () => {
                                 <span className="metric-value">{counts.activeToday}</span>
                             </div>
                             <div className="metric-bar">
-                                <div className="metric-fill" style={{ width: '72%', background: 'var(--primary)' }}></div>
+                                <div className="metric-fill" style={{ width: `${counts.players > 0 ? Math.min((counts.activeToday / counts.players) * 100, 100) : 0}%`, background: 'var(--primary)' }}></div>
                             </div>
                         </div>
                         <div className="metric-item">
                             <div className="metric-header">
-                                <span>Actividades Completadas</span>
+                                <span>Tasa de Progreso</span>
                                 <span className="metric-value">{counts.completionRate}%</span>
                             </div>
                             <div className="metric-bar">
-                                <div className="metric-fill" style={{ width: '76%', background: 'var(--accent)' }}></div>
+                                <div className="metric-fill" style={{ width: `${counts.completionRate}%`, background: 'var(--accent)' }}></div>
                             </div>
                         </div>
                         <div className="metric-item">
                             <div className="metric-header">
-                                <span>XP Generado</span>
-                                <span className="metric-value">{counts.totalXp}</span>
+                                <span>XP Total</span>
+                                <span className="metric-value">{counts.totalXp.toLocaleString()}</span>
                             </div>
                             <div className="metric-bar">
-                                <div className="metric-fill" style={{ width: '85%', background: 'var(--warning)' }}></div>
+                                <div className="metric-fill" style={{ width: `${Math.min((counts.totalXp / 10000) * 100, 100)}%`, background: 'var(--warning)' }}></div>
                             </div>
                         </div>
                     </div>
@@ -260,13 +276,7 @@ const Dashboard = () => {
                         <button className="btn-ghost" onClick={() => navigate('/students')}>Ver todos</button>
                     </div>
                     <div className="leaderboard-list">
-                        {[
-                            { rank: 1, name: 'Carlos M.', xp: 2450, avatar: '🏆' },
-                            { rank: 2, name: 'María L.', xp: 2180, avatar: '🥈' },
-                            { rank: 3, name: 'Juan P.', xp: 1950, avatar: '🥉' },
-                            { rank: 4, name: 'Ana R.', xp: 1720, avatar: '⭐' },
-                            { rank: 5, name: 'Pedro S.', xp: 1540, avatar: '⭐' },
-                        ].map((player, idx) => (
+                        {topPlayers.length > 0 ? topPlayers.map((player, idx) => (
                             <div key={idx} className="leaderboard-item">
                                 <div className="rank-badge" data-rank={player.rank}>
                                     {player.avatar}
@@ -278,11 +288,15 @@ const Dashboard = () => {
                                 <div className="player-bar">
                                     <div
                                         className="player-progress"
-                                        style={{ width: `${(player.xp / 2450) * 100}%` }}
+                                        style={{ width: `${topPlayers[0]?.xp > 0 ? (player.xp / topPlayers[0].xp) * 100 : 0}%` }}
                                     ></div>
                                 </div>
                             </div>
-                        ))}
+                        )) : (
+                            <div className="empty-leaderboard">
+                                <span>Sin jugadores aún</span>
+                            </div>
+                        )}
                     </div>
                 </motion.div>
 

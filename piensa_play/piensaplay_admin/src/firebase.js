@@ -7,7 +7,7 @@ const firebaseConfig = {
     apiKey: "AIzaSyCby4NWOOrCQbwpBmbgqtFasJM5kusD4ig",
     authDomain: "piensa-play-56a1c.firebaseapp.com",
     projectId: "piensa-play-56a1c",
-    storageBucket: "piensa-play-56a1c.firebasestorage.app",
+    storageBucket: "piensa-play-56a1c.appspot.com",
     messagingSenderId: "978066257302",
     appId: "1:978066257302:web:5f60cf1863758cb7e159b7",
     measurementId: "G-G60RPSQLE7"
